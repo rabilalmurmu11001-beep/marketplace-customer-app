@@ -28,6 +28,19 @@ class HomeRecommendedServicesNotifier
   }
 }
 
+class HomeCouponsServiceNotifier extends Notifier<List<Map<String, dynamic>>?> {
+  @override
+  List<Map<String, dynamic>>? build() => null;
+
+  void setCoupons(List<Map<String, dynamic>>? coupons) {
+    state = coupons;
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//////////// Riverpod Providers  /////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+
 final customerProfileProvider =
     NotifierProvider<CustomerProfileNotifier, Map<String, dynamic>?>(
       CustomerProfileNotifier.new,
@@ -43,3 +56,8 @@ final homeRecommendedServicesProvider =
       HomeRecommendedServicesNotifier,
       List<Map<String, dynamic>>?
     >(HomeRecommendedServicesNotifier.new);
+
+final homeCouponsProvider =
+    NotifierProvider<HomeCouponsServiceNotifier, List<Map<String, dynamic>>?>(
+      HomeCouponsServiceNotifier.new,
+    );

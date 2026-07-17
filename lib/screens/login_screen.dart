@@ -26,6 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
   int _countdown = 0;
   Timer? _timer;
+  String identifireToken = '';
 
   @override
   void dispose() {
@@ -79,6 +80,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          identifireToken = res.data["otpToken"];
         });
         _startCountdown();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -158,7 +160,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           await authService.phonelogin(identifier, secret);
         }
       } else {
-        await authService.verifyOtp(identifier, secret);
+        await authService.verifyOtp(identifireToken, secret);
       }
 
       if (mounted) {

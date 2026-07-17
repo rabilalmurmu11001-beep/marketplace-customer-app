@@ -1,4 +1,5 @@
 import 'package:customer_app/network/services/categoryService.dart';
+import 'package:customer_app/network/services/couponsService.dart';
 import 'package:customer_app/network/services/sevicesService.dart';
 import 'package:customer_app/network/services/userService.dart';
 import 'package:customer_app/store/use_app_store.dart';
@@ -11,6 +12,7 @@ import '../widgets/category_card.dart';
 import '../widgets/recommended_service_card.dart';
 import '../widgets/promo_banner_card.dart';
 import '../widgets/active_bookings_section.dart';
+import '../utils/categoryIcons.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -30,7 +32,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
       if (customerProfile == null) {
         _refreshData();
-        _refreshRecommendedServices();
       }
     });
   }
@@ -56,19 +57,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             );
       }
 
-      await _refreshRecommendedServices();
-    } catch (_) {
-      // Gracefully ignore refresh network failure in pull-to-refresh
-    }
-  }
-
-  Future<void> _refreshRecommendedServices() async {
-    try {
       final recommendedServicesResponse = await ref
           .read(servicesServiceProvider)
           .getRecommendedServices();
       final recommendedServicesData = recommendedServicesResponse.data;
-      
+
       List<dynamic>? servicesList;
       if (recommendedServicesData is List) {
         servicesList = recommendedServicesData;
@@ -82,6 +75,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             .read(homeRecommendedServicesProvider.notifier)
             .setRecommendedServices(
               List<Map<String, dynamic>>.from(servicesList),
+            );
+      }
+
+      final couponsResponse = await ref
+          .read(couponsServiceProvider)
+          .getAllCoupons();
+      final couponsData = couponsResponse.data;
+
+      List<dynamic>? couponsList;
+      if (couponsData is List) {
+        couponsList = couponsData;
+      } else if (couponsData is Map<String, dynamic> &&
+          couponsData.containsKey('coupons')) {
+        couponsList = couponsData['coupons'] as List?;
+      }
+
+      if (couponsList != null) {
+        ref
+            .read(homeCouponsProvider.notifier)
+            .setCoupons(
+              List<Map<String, dynamic>>.from(couponsList),
             );
       }
     } catch (_) {
@@ -101,54 +115,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  IconData _getCategoryIcon(String label) {
-    switch (label.toLowerCase().trim()) {
-      case 'cleaning':
-      case 'home cleaning':
-        return Icons.cleaning_services_outlined;
-      case 'repair':
-        return Icons.build_outlined;
-      case 'painting':
-        return Icons.format_paint_outlined;
-      case 'plumbing':
-        return Icons.plumbing_outlined;
-      case 'electric':
-      case 'electrician':
-      case 'electrical':
-        return Icons.electrical_services_outlined;
-      case 'laundry':
-        return Icons.local_laundry_service_outlined;
-      case 'appliance':
-        return Icons.kitchen_outlined;
-      case 'beauty':
-        return Icons.spa_outlined;
-      case 'sofa':
-      case 'sofa care':
-      case 'sofa cleaning':
-        return Icons.weekend_outlined;
-      case 'ac':
-      case 'ac servicing':
-      case 'ac service':
-        return Icons.ac_unit_outlined;
-      case 'garden':
-      case 'garden care':
-        return Icons.yard_outlined;
-      case 'pest control':
-      case 'pest':
-        return Icons.bug_report_outlined;
-      default:
-        return Icons.construction_outlined;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final customerProfile = ref.watch(customerProfileProvider);
     final categories = ref.watch(homeCategoriesProvider);
     final recommendedServices = ref.watch(homeRecommendedServicesProvider);
+    final coupons = ref.watch(homeCouponsProvider);
 
-    print('Recommended Services: $recommendedServices'); // Debugging line
+
+    print('Coupon Data: $coupons'); // Debugging line to check coupon data
+
+
 
     return Scaffold(
       body: SafeArea(
@@ -234,7 +212,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 20),
 
                     // Dynamic Context-Sensitive Banner
-                    const PromoBannerCard(),
+                    coupons == null || coupons.isEmpty
+                        ? const PromoBannerCard()
+                        : SizedBox(
+                            height: 160,
+                            child: PageView.builder(
+                              itemCount: coupons.length,
+                              itemBuilder: (context, index) {
+                                return PromoBannerCard(coupon: coupons[index]);
+                              },
+                            ),
+                          ),
                     const SizedBox(height: 24),
 
                     // Categories Grid
@@ -275,7 +263,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ?.map(
                                 (dynamic data) => CategoryCard(
                                   title: data['name'] ?? '',
-                                  icon: _getCategoryIcon(data['name'] ?? ''),
+                                  icon: getCategoryIcon(data['name'] ?? ''),
                                   label: data['name'] ?? '',
                                 ),
                               )
@@ -288,7 +276,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     // Today's / Active Bookings Section
                     ActiveBookingsSection(appState: appState),
 
-                     Text(
+                    Text(
                       'Recommended Services',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontSize: 16,
@@ -299,36 +287,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 14),
 
                     recommendedServices == null || recommendedServices.isEmpty
-                        ? const Column(
-                            children: [
-                              RecommendedServiceCard(
-                                title: 'Sofa Deep Cleaning',
-                                price: '₹499',
-                                rating: '★ 4.9',
-                                imageUrl:
-                                    'https://images.unsplash.com/photo-1589405858862-2ac9cbb41321?q=80&w=200&auto=format&fit=crop',
+                        ? Center(
+                            child: Text(
+                              'No recommended services available.',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontSize: 14,
+                                color: theme.textTheme.bodyLarge?.color,
                               ),
-                              RecommendedServiceCard(
-                                title: 'AC Service',
-                                price: '₹799',
-                                rating: '★ 4.8',
-                                imageUrl:
-                                    'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=200&auto=format&fit=crop',
-                              ),
-                              RecommendedServiceCard(
-                                title: 'Bathroom Cleaning',
-                                price: '₹599',
-                                rating: '★ 4.7',
-                                imageUrl:
-                                    'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=200&auto=format&fit=crop',
-                              ),
-                            ],
+                            ),
                           )
                         : Column(
                             children: recommendedServices.map((service) {
                               final title = service['name'] ?? '';
-                              final price = service['basePrice'] != null ? '₹${service['basePrice']}' : '₹0';
-                              final rating = service['rating'] != null ? '★ ${service['rating']}' : '★ 5.0';
+                              final price = service['basePrice'] != null
+                                  ? '₹${service['basePrice']}'
+                                  : '₹0';
+                              final rating = service['rating'] != null
+                                  ? '★ ${service['rating']}'
+                                  : '★ 5.0';
                               final imageUrl = service['image'] ?? '';
                               return RecommendedServiceCard(
                                 title: title,
