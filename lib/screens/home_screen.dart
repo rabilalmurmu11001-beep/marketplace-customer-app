@@ -47,17 +47,20 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: theme.cardColor,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: theme.dividerColor),
-                        ),
-                        child: Icon(
-                          Icons.notifications_none_outlined,
-                          size: 18,
-                          color: theme.textTheme.bodyMedium?.color,
+                      GestureDetector(
+                        onTap: () => context.push('/notifications'),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: theme.dividerColor),
+                          ),
+                          child: Icon(
+                            Icons.notifications_none_outlined,
+                            size: 18,
+                            color: theme.textTheme.bodyMedium?.color,
+                          ),
                         ),
                       ),
                     ],

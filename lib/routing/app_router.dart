@@ -16,6 +16,7 @@ import '../screens/profile_screen.dart';
 import '../screens/categories_screen.dart';
 import '../screens/reviews_screen.dart';
 import '../screens/addresses_screen.dart';
+import '../screens/notifications_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
@@ -96,6 +97,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/addresses',
       builder: (context, state) => const AddressesScreen(),
+    ),
+    GoRoute(
+      path: '/notifications',
+      builder: (context, state) => const NotificationsScreen(),
     ),
   ],
 );
