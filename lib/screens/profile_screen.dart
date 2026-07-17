@@ -44,7 +44,7 @@ class ProfileScreen extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -74,7 +74,7 @@ class ProfileScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: BrandColors.accent.withOpacity(0.1),
+                    color: BrandColors.accent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
@@ -120,6 +120,7 @@ class ProfileScreen extends StatelessWidget {
                         title: 'Managed Delivery Coordinates',
                         trailingText: '${appState.customerAddresses.length} saved',
                         theme: theme,
+                        onTap: () => context.push('/addresses'),
                       ),
                       Divider(height: 1, color: theme.dividerColor),
                       // Payment Modules
@@ -186,9 +187,8 @@ class ProfileScreen extends StatelessWidget {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
-                      foregroundColor: Colors.red,
                       elevation: 0,
-                      side: BorderSide(color: Colors.red.withOpacity(0.3)),
+                      side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -216,6 +216,7 @@ class ProfileScreen extends StatelessWidget {
     required String title,
     required String trailingText,
     required ThemeData theme,
+    VoidCallback? onTap,
   }) {
     return ListTile(
       leading: Text(leadingIcon, style: const TextStyle(fontSize: 16)),
@@ -238,7 +239,7 @@ class ProfileScreen extends StatelessWidget {
             ),
         ],
       ),
-      onTap: () {},
+      onTap: onTap,
     );
   }
 }

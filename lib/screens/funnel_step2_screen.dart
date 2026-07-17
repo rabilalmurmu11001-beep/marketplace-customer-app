@@ -14,17 +14,9 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
   double _swipeProgress = 0.0;
   bool _isBooked = false;
 
-  String _getDateString(int index) {
-    switch (index) {
-      case 0:
-        return 'May 24, 2026';
-      case 1:
-        return 'May 25, 2026';
-      case 2:
-        return 'May 26, 2026';
-      default:
-        return 'May 25, 2026';
-    }
+  String _getDateString(DateTime date) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
   void _onSwipeComplete() {
@@ -104,41 +96,40 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                       ),
                       child: Row(
                         children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFE6F4F2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: Text(
-                                'JH',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: BrandColors.accent,
-                                ),
-                              ),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              'https://images.unsplash.com/photo-1589405858862-2ac9cbb41321?q=80&w=200&auto=format&fit=crop',
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 40,
+                                  height: 40,
+                                  color: BrandColors.accent.withValues(alpha: 0.1),
+                                  child: const Icon(Icons.cleaning_services_outlined, size: 20, color: BrandColors.accent),
+                                );
+                              },
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'John Hanson Professional',
+                                  'Sofa Deep Chemical Wash',
                                   style: theme.textTheme.bodyLarge?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                                    fontSize: 13,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 3),
                                 Text(
-                                  'Sofa Deep Wash Package',
+                                  'Premium Sanitization • Fixed Quote',
                                   style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontSize: 10,
+                                    fontSize: 10.5,
                                   ),
                                 ),
                               ],
@@ -158,12 +149,42 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                         border: Border.all(color: theme.dividerColor),
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSummaryRow('Target Date:', _getDateString(appState.chosenDateIndex), theme, valueColor: theme.textTheme.bodyLarge?.color),
+                          _buildSummaryRow('Target Date:', _getDateString(appState.chosenDate), theme, valueColor: theme.textTheme.bodyLarge?.color),
                           const SizedBox(height: 10),
                           _buildSummaryRow('Window Arrival:', appState.chosenTimeSlot, theme, valueColor: BrandColors.accent),
                           const SizedBox(height: 10),
                           _buildSummaryRow('Address Target:', address.street, theme, valueColor: theme.textTheme.bodyLarge?.color),
+                          if (appState.bookingDescription.trim().isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            const Divider(height: 1),
+                            const SizedBox(height: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'SPECIAL REQUEST:',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: BrandColors.accent,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  appState.bookingDescription,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1.4,
+                                    color: theme.textTheme.bodyLarge?.color,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),

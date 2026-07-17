@@ -42,9 +42,10 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  int chosenDateIndex = 1;
+  DateTime chosenDate = DateTime.now();
   String chosenTimeSlot = '02:00 PM';
   int chosenAddressId = 1;
+  String bookingDescription = '';
   bool isFulfillmentPipelineRunning = false;
 
   final List<Address> customerAddresses = [
@@ -61,11 +62,21 @@ class AppState extends ChangeNotifier {
       customerAddresses.firstWhere((a) => a.id == chosenAddressId, orElse: () => customerAddresses[0]);
 
   String get activeDateString {
-    final List<String> days = ['Sun 24', 'Mon 25', 'Tue 26'];
-    if (chosenDateIndex >= 0 && chosenDateIndex < days.length) {
-      return days[chosenDateIndex];
+    final weekdayStr = _getWeekdayString(chosenDate.weekday);
+    return '$weekdayStr ${chosenDate.day}';
+  }
+
+  String _getWeekdayString(int day) {
+    switch (day) {
+      case 1: return 'Mon';
+      case 2: return 'Tue';
+      case 3: return 'Wed';
+      case 4: return 'Thu';
+      case 5: return 'Fri';
+      case 6: return 'Sat';
+      case 7: return 'Sun';
+      default: return '';
     }
-    return 'Mon 25';
   }
 
   void selectAddress(int id) {
@@ -73,8 +84,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void selectDate(int index) {
-    chosenDateIndex = index;
+  void selectDate(DateTime date) {
+    chosenDate = date;
     notifyListeners();
   }
 
@@ -83,8 +94,81 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateBookingDescription(String description) {
+    bookingDescription = description;
+    notifyListeners();
+  }
+
   void bookFulfillment() {
     isFulfillmentPipelineRunning = true;
+    notifyListeners();
+  }
+
+  void cancelBooking() {
+    isFulfillmentPipelineRunning = false;
+    notifyListeners();
+  }
+
+  void addAddress({
+    required String label,
+    required String street,
+    required String apt,
+    required String city,
+    required bool isDefault,
+  }) {
+    final nextId = customerAddresses.isEmpty
+        ? 1
+        : customerAddresses.map((a) => a.id).reduce((max, id) => id > max ? id : max) + 1;
+        
+    final newAddr = Address(
+      id: nextId,
+      label: label,
+      street: street,
+      apt: apt,
+      city: city,
+      isDefault: isDefault,
+    );
+
+    if (isDefault) {
+      for (int i = 0; i < customerAddresses.length; i++) {
+        final a = customerAddresses[i];
+        if (a.isDefault) {
+          customerAddresses[i] = Address(
+            id: a.id,
+            label: a.label,
+            street: a.street,
+            apt: a.apt,
+            city: a.city,
+            isDefault: false,
+          );
+        }
+      }
+    }
+    
+    customerAddresses.add(newAddr);
+    notifyListeners();
+  }
+
+  void removeAddress(int id) {
+    customerAddresses.removeWhere((a) => a.id == id);
+    if (chosenAddressId == id && customerAddresses.isNotEmpty) {
+      chosenAddressId = customerAddresses.first.id;
+    }
+    notifyListeners();
+  }
+
+  void setDefaultAddress(int id) {
+    for (int i = 0; i < customerAddresses.length; i++) {
+      final a = customerAddresses[i];
+      customerAddresses[i] = Address(
+        id: a.id,
+        label: a.label,
+        street: a.street,
+        apt: a.apt,
+        city: a.city,
+        isDefault: a.id == id,
+      );
+    }
     notifyListeners();
   }
 
@@ -96,10 +180,16 @@ class AppState extends ChangeNotifier {
   }
 
   void resetJourney() {
-    chosenDateIndex = 1;
+    chosenDate = DateTime.now();
     chosenTimeSlot = '02:00 PM';
     chosenAddressId = 1;
+    bookingDescription = '';
     isFulfillmentPipelineRunning = false;
+    customerAddresses.clear();
+    customerAddresses.addAll([
+      Address(id: 1, label: 'Home Flat 🏠', street: '821 West End Dr', apt: 'Apt 4B', city: 'New York', isDefault: true),
+      Address(id: 2, label: 'Office Suite 💼', street: '350 Fifth Ave', apt: 'Floor 42', city: 'New York', isDefault: false),
+    ]);
     messageStream.clear();
     messageStream.add(ChatMessage(sender: 'provider', text: 'Hello Emma! I will arrive at your location coords in 20 minutes.', time: '10:30 AM'));
     messageStream.add(ChatMessage(sender: 'customer', text: 'Perfect, thank you! Please make sure to bring the non-toxic chemical solvents.', time: '10:32 AM'));

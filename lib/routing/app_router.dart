@@ -15,6 +15,8 @@ import '../screens/booking_detail_screen.dart';
 import '../screens/chat_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/categories_screen.dart';
+import '../screens/reviews_screen.dart';
+import '../screens/addresses_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
@@ -87,6 +89,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/chat',
       builder: (context, state) => const ChatScreen(),
+    ),
+    GoRoute(
+      path: '/reviews',
+      builder: (context, state) => const ReviewsScreen(),
+    ),
+    GoRoute(
+      path: '/addresses',
+      builder: (context, state) => const AddressesScreen(),
     ),
   ],
 );

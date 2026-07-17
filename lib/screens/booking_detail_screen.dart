@@ -6,10 +6,214 @@ import '../theme/brand_theme.dart';
 class BookingDetailScreen extends StatelessWidget {
   const BookingDetailScreen({super.key});
 
+  String _getDateString(DateTime date) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  void _showCancelConfirmation(BuildContext context, AppState appState) {
+    final theme = Theme.of(context);
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: theme.cardColor,
+          title: Text(
+            'Cancel Booking?',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to cancel this sanitization dispatch? This action cannot be undone.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontSize: 12,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Keep Appointment',
+                style: TextStyle(
+                  color: theme.textTheme.bodyMedium?.color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                appState.cancelBooking();
+                Navigator.of(context).pop(); // close dialog
+                context.pop(); // return to booking list screen
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Booking dispatch cancelled successfully.'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+              child: const Text(
+                'Cancel Booking',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMockMap(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    return Container(
+      height: 180,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            // Abstract Grid lines representing streets
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.15,
+                child: GridPaper(
+                  color: isDark ? Colors.white : Colors.black,
+                  interval: 60,
+                  subdivisions: 1,
+                ),
+              ),
+            ),
+            // Mock Route line
+            Positioned(
+              left: 40,
+              top: 90,
+              child: Container(
+                width: 160,
+                height: 4,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [BrandColors.accent, Colors.blue],
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 196,
+              top: 90,
+              child: Container(
+                width: 4,
+                height: 40,
+                color: Colors.blue,
+              ),
+            ),
+            // Destination Marker (Customer Address)
+            Positioned(
+              left: 186,
+              top: 120,
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.location_on,
+                    color: Colors.redAccent,
+                    size: 24,
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'YOU',
+                      style: TextStyle(color: Colors.white, fontSize: 6, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // En-route Technician Marker
+            Positioned(
+              left: 90,
+              top: 78,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: BrandColors.accent,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.directions_bike,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+            ),
+            // Live Status Tag
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'LIVE TRACKING',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -40,146 +244,313 @@ class BookingDetailScreen extends StatelessWidget {
       body: ListenableBuilder(
         listenable: AppState(),
         builder: (context, _) {
-          return Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Automated Dispatch Progression
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: BrandColors.accent.withOpacity(0.3), width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: BrandColors.accent.withOpacity(0.05),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'AUTOMATED DISPATCH PROGRESSION',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          color: BrandColors.accent,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      _buildStepItem(
-                        icon: '●',
-                        text: 'Operator Dispatched Target Complete',
-                        isCompleted: true,
-                        theme: theme,
-                      ),
-                      _buildStepDivider(),
-                      _buildStepItem(
-                        icon: '●',
-                        text: 'Technician Currently En Route',
-                        isCompleted: true,
-                        theme: theme,
-                      ),
-                      _buildStepDivider(),
-                      _buildStepItem(
-                        icon: '○',
-                        text: 'Job Operations Setup Pending',
-                        isCompleted: false,
-                        theme: theme,
-                      ),
-                      _buildStepDivider(),
-                      _buildStepItem(
-                        icon: '○',
-                        text: 'Fulfillment Review Settlement',
-                        isCompleted: false,
-                        theme: theme,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
+          final appState = AppState();
+          final address = appState.activeAddress;
 
-                // Technician assigned details card
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: theme.dividerColor),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFE6F4F2),
-                          shape: BoxShape.circle,
+          return ListView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(20.0),
+            children: [
+              // Mock tracking map
+              _buildMockMap(theme),
+              const SizedBox(height: 20),
+
+              // Booking Details card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: theme.dividerColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'BOOKING LOGISTICS DETAIL',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: BrandColors.accent,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Service row
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            'https://images.unsplash.com/photo-1589405858862-2ac9cbb41321?q=80&w=200&auto=format&fit=crop',
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                          ),
                         ),
-                        child: const Center(
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Sofa Deep Chemical Wash',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                'Premium Sanitization • \$56.40 Total Price',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontSize: 10.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    const Divider(height: 1),
+                    const SizedBox(height: 14),
+
+                    // Date & Time
+                    Row(
+                      children: [
+                        const Icon(Icons.calendar_today_outlined, size: 14, color: BrandColors.accent),
+                        const SizedBox(width: 8),
+                        Text(
+                          _getDateString(appState.chosenDate),
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 16),
+                        const Icon(Icons.access_time_outlined, size: 14, color: BrandColors.accent),
+                        const SizedBox(width: 8),
+                        Text(
+                          appState.chosenTimeSlot,
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Target Address
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 14, color: BrandColors.accent),
+                        const SizedBox(width: 8),
+                        Expanded(
                           child: Text(
-                            'JH',
-                            style: TextStyle(
+                            '${address.street}, ${address.apt}, ${address.city}',
+                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Special instructions (description)
+                    if (appState.bookingDescription.trim().isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.description_outlined, size: 14, color: BrandColors.accent),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Special Request:',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: BrandColors.accent,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  appState.bookingDescription,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Automated Dispatch Progression
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: BrandColors.accent.withValues(alpha: 0.3), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: BrandColors.accent.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'AUTOMATED DISPATCH PROGRESSION',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: BrandColors.accent,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildStepItem(
+                      icon: '●',
+                      text: 'Operator Dispatched Target Complete',
+                      isCompleted: true,
+                      theme: theme,
+                    ),
+                    _buildStepDivider(),
+                    _buildStepItem(
+                      icon: '●',
+                      text: 'Technician Currently En Route',
+                      isCompleted: true,
+                      theme: theme,
+                    ),
+                    _buildStepDivider(),
+                    _buildStepItem(
+                      icon: '○',
+                      text: 'Job Operations Setup Pending',
+                      isCompleted: false,
+                      theme: theme,
+                    ),
+                    _buildStepDivider(),
+                    _buildStepItem(
+                      icon: '○',
+                      text: 'Fulfillment Review Settlement',
+                      isCompleted: false,
+                      theme: theme,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Technician assigned details card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: theme.dividerColor),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE6F4F2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'JH',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: BrandColors.accent,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'John Hanson Pro',
+                            style: theme.textTheme.bodyLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
-                              color: BrandColors.accent,
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'John Hanson Pro',
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Ecosystem Dispatch Matrix Active',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontSize: 10,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Ecosystem Dispatch Matrix Active',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: () => context.push('/chat'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: BrandColors.accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Chat Thread',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      ElevatedButton(
-                        onPressed: () => context.push('/chat'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: BrandColors.accent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Chat Thread',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Cancel Booking Button
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => _showCancelConfirmation(context, appState),
+                  icon: const Icon(Icons.cancel_outlined, color: Colors.redAccent, size: 16),
+                  label: const Text(
+                    'Cancel Dispatch Appointment',
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: Colors.redAccent, width: 1.5),
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 20),
+            ],
           );
         },
       ),
@@ -225,7 +596,7 @@ class BookingDetailScreen extends StatelessWidget {
       margin: const EdgeInsets.only(left: 3, top: 4, bottom: 4),
       height: 16,
       width: 1.5,
-      color: Colors.grey.withOpacity(0.3),
+      color: Colors.grey.withValues(alpha: 0.3),
     );
   }
 }
