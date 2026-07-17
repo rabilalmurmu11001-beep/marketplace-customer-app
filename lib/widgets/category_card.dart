@@ -5,11 +5,13 @@ import '../theme/brand_theme.dart';
 class CategoryCard extends StatelessWidget {
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
 
   const CategoryCard({
     super.key,
     required this.icon,
     required this.label,
+    this.onTap,
   });
 
   @override
@@ -17,7 +19,7 @@ class CategoryCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return InkWell(
-      onTap: () => context.go('/search'),
+      onTap: onTap ?? () => context.go('/search'),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(

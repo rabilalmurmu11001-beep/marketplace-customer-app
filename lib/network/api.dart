@@ -3,9 +3,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:customer_app/routing/app_router.dart';
 
-// final String host = 'http://13.51.197.245';
+// final String host = 'http://13.51.197.245:4000';
 final String host =
-    'https://14df-2409-4088-be81-b9f5-9fc8-e50a-acae-6b3e.ngrok-free.app';
+    'https://6012-2402-3a80-4134-2c89-9234-b57a-f414-62e3.ngrok-free.app';
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(

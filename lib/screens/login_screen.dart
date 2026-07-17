@@ -1,16 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
+import '../network/services/authServices.dart';
 import '../theme/brand_theme.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController(text: 'emma.watson@gmail.com');
   final _passwordController = TextEditingController(text: 'password123');
   final _phoneController = TextEditingController(text: '+1 (555) 234-5678');
@@ -51,45 +54,14 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void _sendOtp() {
+  void _sendOtp() async {
     final identifier = _isEmail ? _emailController.text : _phoneController.text;
     if (identifier.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please enter your ${_isEmail ? 'email address' : 'mobile number'} first.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    _startCountdown();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Security code sent to $identifier successfully.'),
-        backgroundColor: BrandColors.accent,
-      ),
-    );
-  }
-
-  void _handleLogin() {
-    final identifier = _isEmail ? _emailController.text : _phoneController.text;
-    final secret = _isPassword ? _passwordController.text : _otpController.text;
-
-    if (identifier.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please enter your ${_isEmail ? 'email address' : 'mobile number'}.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    if (secret.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please enter your ${_isPassword ? 'password' : 'one-time passcode'}.'),
+          content: Text(
+            'Please enter your ${_isEmail ? 'email address' : 'mobile number'} first.',
+          ),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -100,15 +72,126 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    // Simulate authentication process
-    Timer(const Duration(milliseconds: 1200), () {
+    try {
+      final authService = ref.read(authServiceProvider);
+      final res = await authService.requestOtp(identifier);
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        _startCountdown();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              res.data['message'] ?? 'Security code sent successfully.',
+            ),
+            backgroundColor: BrandColors.accent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        String errorMsg = 'Failed to send OTP. Please check your credentials.';
+        if (e is DioException) {
+          final data = e.response?.data;
+          if (data is Map) {
+            errorMsg = data['message'] ?? e.message ?? errorMsg;
+          } else if (data is String && data.isNotEmpty) {
+            if (data.contains('<!DOCTYPE html>') || data.contains('<html')) {
+              errorMsg = e.message ?? errorMsg;
+            } else {
+              errorMsg = data;
+            }
+          } else {
+            errorMsg = e.message ?? errorMsg;
+          }
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+  }
+
+  void _handleLogin() async {
+    final identifier = _isEmail ? _emailController.text : _phoneController.text;
+    final secret = _isPassword ? _passwordController.text : _otpController.text;
+
+    if (identifier.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please enter your ${_isEmail ? 'email address' : 'mobile number'}.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    if (secret.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please enter your ${_isPassword ? 'password' : 'one-time passcode'}.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = ref.read(authServiceProvider);
+      if (_isPassword) {
+        if (_isEmail) {
+          await authService.emaillogin(identifier, secret);
+        } else {
+          await authService.phonelogin(identifier, secret);
+        }
+      } else {
+        await authService.verifyOtp(identifier, secret);
+      }
+
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
         context.go('/home');
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        String errorMsg = 'Authentication failed. Please verify credentials.';
+        if (e is DioException) {
+          final data = e.response?.data;
+          if (data is Map) {
+            errorMsg = data['message'] ?? e.message ?? errorMsg;
+          } else if (data is String && data.isNotEmpty) {
+            if (data.contains('<!DOCTYPE html>') || data.contains('<html')) {
+              errorMsg = e.message ?? errorMsg;
+            } else {
+              errorMsg = data;
+            }
+          } else {
+            errorMsg = e.message ?? errorMsg;
+          }
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
   }
 
   Widget _buildSegmentedControl<T>({
@@ -138,11 +221,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? (isDark ? BrandColors.accent.withOpacity(0.12) : const Color(0xFFE6F4F2))
+                      ? (isDark
+                            ? BrandColors.accent.withValues(alpha: 0.12)
+                            : const Color(0xFFE6F4F2))
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   border: isSelected
-                      ? Border.all(color: BrandColors.accent.withOpacity(0.2))
+                      ? Border.all(
+                          color: BrandColors.accent.withValues(alpha: 0.2),
+                        )
                       : null,
                 ),
                 child: Row(
@@ -151,7 +238,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     Icon(
                       icons[index],
                       size: 14,
-                      color: isSelected ? BrandColors.accent : theme.textTheme.bodyMedium?.color,
+                      color: isSelected
+                          ? BrandColors.accent
+                          : theme.textTheme.bodyMedium?.color,
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -160,7 +249,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? BrandColors.accent : theme.textTheme.bodyMedium?.color,
+                        color: isSelected
+                            ? BrandColors.accent
+                            : theme.textTheme.bodyMedium?.color,
                       ),
                     ),
                   ],
@@ -182,10 +273,11 @@ class _LoginScreenState extends State<LoginScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(24.0),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 48, // accounting for vertical padding
+                  minHeight: constraints.maxHeight - 48,
                 ),
                 child: IntrinsicHeight(
                   child: Column(
@@ -205,7 +297,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: theme.textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 32),
-                      
+
                       // Segmented selectors
                       const Text(
                         'IDENTIFIER ENDPOINT',
@@ -219,13 +311,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       _buildSegmentedControl<bool>(
                         values: [true, false],
                         labels: ['Email Address', 'Mobile Number'],
-                        icons: [Icons.email_outlined, Icons.phone_android_outlined],
+                        icons: [
+                          Icons.email_outlined,
+                          Icons.phone_android_outlined,
+                        ],
                         selectedValue: _isEmail,
                         onSelected: (val) => setState(() => _isEmail = val),
                       ),
-                      
+
                       const SizedBox(height: 20),
-                      
+
                       const Text(
                         'SECURITY CREDENTIAL TYPE',
                         style: TextStyle(
@@ -242,16 +337,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         selectedValue: _isPassword,
                         onSelected: (val) => setState(() => _isPassword = val),
                       ),
-                      
+
                       const SizedBox(height: 32),
-                      
+
                       // Credentials form fields
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Identifier Field (Email or Mobile)
                           Text(
-                            _isEmail ? 'ACCOUNT EMAIL ENDPOINT' : 'MOBILE SECURE NUMBER',
+                            _isEmail
+                                ? 'ACCOUNT EMAIL ENDPOINT'
+                                : 'MOBILE SECURE NUMBER',
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -260,34 +357,53 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 8),
                           TextField(
-                            controller: _isEmail ? _emailController : _phoneController,
-                            keyboardType: _isEmail ? TextInputType.emailAddress : TextInputType.phone,
+                            controller: _isEmail
+                                ? _emailController
+                                : _phoneController,
+                            keyboardType: _isEmail
+                                ? TextInputType.emailAddress
+                                : TextInputType.phone,
                             enabled: !_isLoading,
                             style: const TextStyle(fontSize: 13),
                             decoration: InputDecoration(
                               filled: true,
                               fillColor: theme.cardColor,
-                              hintText: _isEmail ? 'Enter your email' : 'Enter phone number',
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              hintText: _isEmail
+                                  ? 'Enter your email'
+                                  : 'Enter phone number',
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(color: theme.dividerColor),
+                                borderSide: BorderSide(
+                                  color: theme.dividerColor,
+                                ),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: BrandColors.accent),
+                                borderSide: const BorderSide(
+                                  color: BrandColors.accent,
+                                ),
                               ),
                               disabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.5)),
+                                borderSide: BorderSide(
+                                  color: theme.dividerColor.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                           const SizedBox(height: 24),
-                          
+
                           // Verification Field (Password or OTP)
                           Text(
-                            _isPassword ? 'PASSWORD SECURITY TOKEN' : 'ONE-TIME PASSCODE (OTP)',
+                            _isPassword
+                                ? 'PASSWORD SECURITY TOKEN'
+                                : 'ONE-TIME PASSCODE (OTP)',
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -296,27 +412,44 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 8),
                           TextField(
-                            controller: _isPassword ? _passwordController : _otpController,
+                            controller: _isPassword
+                                ? _passwordController
+                                : _otpController,
                             obscureText: _isPassword ? _obscurePassword : false,
-                            keyboardType: _isPassword ? TextInputType.visiblePassword : TextInputType.number,
+                            keyboardType: _isPassword
+                                ? TextInputType.visiblePassword
+                                : TextInputType.number,
                             enabled: !_isLoading,
                             style: const TextStyle(fontSize: 13),
                             decoration: InputDecoration(
                               filled: true,
                               fillColor: theme.cardColor,
-                              hintText: _isPassword ? '••••••••' : 'Enter 6-digit code',
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              hintText: _isPassword
+                                  ? '••••••••'
+                                  : 'Enter 6-digit code',
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(color: theme.dividerColor),
+                                borderSide: BorderSide(
+                                  color: theme.dividerColor,
+                                ),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: BrandColors.accent),
+                                borderSide: const BorderSide(
+                                  color: BrandColors.accent,
+                                ),
                               ),
                               disabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.5)),
+                                borderSide: BorderSide(
+                                  color: theme.dividerColor.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
                               ),
                               suffixIcon: _isPassword
                                   ? IconButton(
@@ -325,7 +458,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                             ? Icons.visibility_off_outlined
                                             : Icons.visibility_outlined,
                                         size: 18,
-                                        color: theme.textTheme.bodyMedium?.color,
+                                        color:
+                                            theme.textTheme.bodyMedium?.color,
                                       ),
                                       onPressed: () {
                                         setState(() {
@@ -334,17 +468,25 @@ class _LoginScreenState extends State<LoginScreen> {
                                       },
                                     )
                                   : Padding(
-                                      padding: const EdgeInsets.only(right: 8.0),
+                                      padding: const EdgeInsets.only(
+                                        right: 8.0,
+                                      ),
                                       child: TextButton(
-                                        onPressed: (_isLoading || _countdown > 0) ? null : _sendOtp,
+                                        onPressed:
+                                            (_isLoading || _countdown > 0)
+                                            ? null
+                                            : _sendOtp,
                                         child: Text(
                                           _countdown > 0
                                               ? 'Resend (${_countdown}s)'
-                                              : (_otpSent ? 'Resend' : 'Send Code'),
+                                              : (_otpSent
+                                                    ? 'Resend'
+                                                    : 'Send Code'),
                                           style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
-                                            color: (_isLoading || _countdown > 0)
+                                            color:
+                                                (_isLoading || _countdown > 0)
                                                 ? theme.disabledColor
                                                 : BrandColors.accent,
                                           ),
@@ -355,10 +497,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ],
                       ),
-                      
+
                       const Spacer(),
                       const SizedBox(height: 32),
-                      
+
                       // Action Buttons
                       Column(
                         mainAxisSize: MainAxisSize.min,
@@ -371,12 +513,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: BrandColors.accent,
                                 foregroundColor: Colors.white,
-                                disabledBackgroundColor: BrandColors.accent.withOpacity(0.6),
+                                disabledBackgroundColor: BrandColors.accent
+                                    .withValues(alpha: 0.6),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 elevation: 4,
-                                shadowColor: BrandColors.accent.withOpacity(0.3),
+                                shadowColor: BrandColors.accent.withValues(
+                                  alpha: 0.3,
+                                ),
                               ),
                               child: _isLoading
                                   ? const SizedBox(
@@ -402,7 +547,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             children: [
                               Text(
                                 'New client? ',
-                                style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontSize: 12,
+                                ),
                               ),
                               GestureDetector(
                                 onTap: _isLoading

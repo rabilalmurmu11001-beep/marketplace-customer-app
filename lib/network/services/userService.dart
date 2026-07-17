@@ -14,7 +14,7 @@ class UserService {
 
   Future<Response> getUserProfile() async {
     try {
-      Response<dynamic> result = await _dio.get("/user/profile");
+      Response<dynamic> result = await _dio.get("/users/profile/me");
       return result;
     } catch (err) {
       rethrow;
@@ -24,7 +24,7 @@ class UserService {
   Future<Response> updateUserProfile(Map<String, dynamic> updatedData) async {
     try {
       Response<dynamic> result = await _dio.put(
-        "/user/profile",
+        "/users/update/me",
         data: updatedData,
       );
       return result;
