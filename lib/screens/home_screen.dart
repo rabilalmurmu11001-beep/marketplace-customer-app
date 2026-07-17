@@ -1,4 +1,5 @@
 import 'package:customer_app/network/services/categoryService.dart';
+import 'package:customer_app/network/services/sevicesService.dart';
 import 'package:customer_app/network/services/userService.dart';
 import 'package:customer_app/store/use_app_store.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +30,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
       if (customerProfile == null) {
         _refreshData();
+        _refreshRecommendedServices();
       }
     });
   }
@@ -41,12 +43,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ref.read(customerProfileProvider.notifier).setProfile(userData['user']);
       }
 
-      final categoriesResponse = await ref.read(categoryServiceProvider).getCategories();
+      final categoriesResponse = await ref
+          .read(categoryServiceProvider)
+          .getCategories();
       final categoriesData = categoriesResponse.data;
-      if (categoriesData is Map<String, dynamic> && categoriesData.containsKey('categories')) {
-        ref.read(homeCategoriesProvider.notifier).setCategories(
-          List<Map<String, dynamic>>.from(categoriesData['categories']),
-        );
+      if (categoriesData is Map<String, dynamic> &&
+          categoriesData.containsKey('categories')) {
+        ref
+            .read(homeCategoriesProvider.notifier)
+            .setCategories(
+              List<Map<String, dynamic>>.from(categoriesData['categories']),
+            );
+      }
+
+      await _refreshRecommendedServices();
+    } catch (_) {
+      // Gracefully ignore refresh network failure in pull-to-refresh
+    }
+  }
+
+  Future<void> _refreshRecommendedServices() async {
+    try {
+      final recommendedServicesResponse = await ref
+          .read(servicesServiceProvider)
+          .getRecommendedServices();
+      final recommendedServicesData = recommendedServicesResponse.data;
+      
+      List<dynamic>? servicesList;
+      if (recommendedServicesData is List) {
+        servicesList = recommendedServicesData;
+      } else if (recommendedServicesData is Map<String, dynamic> &&
+          recommendedServicesData.containsKey('services')) {
+        servicesList = recommendedServicesData['services'] as List?;
+      }
+
+      if (servicesList != null) {
+        ref
+            .read(homeRecommendedServicesProvider.notifier)
+            .setRecommendedServices(
+              List<Map<String, dynamic>>.from(servicesList),
+            );
       }
     } catch (_) {
       // Gracefully ignore refresh network failure in pull-to-refresh
@@ -110,9 +146,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final theme = Theme.of(context);
     final customerProfile = ref.watch(customerProfileProvider);
     final categories = ref.watch(homeCategoriesProvider);
+    final recommendedServices = ref.watch(homeRecommendedServicesProvider);
 
-    // print('Customer Profile: $customerProfile'); // Debugging line
-    print('Categories: $categories'); // Debugging line
+    print('Recommended Services: $recommendedServices'); // Debugging line
 
     return Scaffold(
       body: SafeArea(
@@ -227,86 +263,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    categories == null || categories.isEmpty
-                        ? GridView.count(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            crossAxisCount: 4,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 0.85,
-                            children: [
-                              CategoryCard(
-                                icon: Icons.cleaning_services_outlined,
-                                label: 'Cleaning',
-                                onTap: () => context.go('/search?category=Cleaning'),
-                              ),
-                              CategoryCard(
-                                icon: Icons.electrical_services_outlined,
-                                label: 'Electric',
-                                onTap: () => context.go('/search?category=Electric'),
-                              ),
-                              CategoryCard(
-                                icon: Icons.plumbing_outlined,
-                                label: 'Plumbing',
-                                onTap: () => context.go('/search?category=Plumbing'),
-                              ),
-                              CategoryCard(
-                                icon: Icons.ac_unit_outlined,
-                                label: 'AC',
-                                onTap: () => context.go('/search?category=AC'),
-                              ),
-                              CategoryCard(
-                                icon: Icons.weekend_outlined,
-                                label: 'Sofa',
-                                onTap: () => context.go('/search?category=Sofa'),
-                              ),
-                              CategoryCard(
-                                icon: Icons.format_paint_outlined,
-                                label: 'Painting',
-                                onTap: () => context.go('/search?category=Painting'),
-                              ),
-                              CategoryCard(
-                                icon: Icons.yard_outlined,
-                                label: 'Garden',
-                                onTap: () => context.go('/search?category=Garden'),
-                              ),
-                              CategoryCard(
-                                icon: Icons.bug_report_outlined,
-                                label: 'Pest Control',
-                                onTap: () => context.go('/search?category=Pest Control'),
-                              ),
-                            ],
-                          )
-                        : GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: categories.length,
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 4,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              childAspectRatio: 0.85,
-                            ),
-                            itemBuilder: (context, index) {
-                              final category = categories[index];
-                              final label = category['name'] ?? '';
-                              return CategoryCard(
-                                icon: _getCategoryIcon(label),
-                                label: label,
-                                onTap: () {
-                                  context.go('/search?category=$label');
-                                },
-                              );
-                            },
-                          ),
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 4,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 0.85,
+                      children:
+                          categories
+                              ?.map(
+                                (dynamic data) => CategoryCard(
+                                  title: data['name'] ?? '',
+                                  icon: _getCategoryIcon(data['name'] ?? ''),
+                                  label: data['name'] ?? '',
+                                ),
+                              )
+                              .toList() ??
+                          [],
+                    ),
 
                     const SizedBox(height: 28),
 
                     // Today's / Active Bookings Section
                     ActiveBookingsSection(appState: appState),
 
-                    Text(
+                     Text(
                       'Recommended Services',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontSize: 16,
@@ -316,29 +298,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                     const SizedBox(height: 14),
 
-                    const RecommendedServiceCard(
-                      title: 'Sofa Deep Cleaning',
-                      price: '₹499',
-                      rating: '★ 4.9',
-                      imageUrl:
-                          'https://images.unsplash.com/photo-1589405858862-2ac9cbb41321?q=80&w=200&auto=format&fit=crop',
-                    ),
-
-                    const RecommendedServiceCard(
-                      title: 'AC Service',
-                      price: '₹799',
-                      rating: '★ 4.8',
-                      imageUrl:
-                          'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=200&auto=format&fit=crop',
-                    ),
-
-                    const RecommendedServiceCard(
-                      title: 'Bathroom Cleaning',
-                      price: '₹599',
-                      rating: '★ 4.7',
-                      imageUrl:
-                          'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=200&auto=format&fit=crop',
-                    ),
+                    recommendedServices == null || recommendedServices.isEmpty
+                        ? const Column(
+                            children: [
+                              RecommendedServiceCard(
+                                title: 'Sofa Deep Cleaning',
+                                price: '₹499',
+                                rating: '★ 4.9',
+                                imageUrl:
+                                    'https://images.unsplash.com/photo-1589405858862-2ac9cbb41321?q=80&w=200&auto=format&fit=crop',
+                              ),
+                              RecommendedServiceCard(
+                                title: 'AC Service',
+                                price: '₹799',
+                                rating: '★ 4.8',
+                                imageUrl:
+                                    'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=200&auto=format&fit=crop',
+                              ),
+                              RecommendedServiceCard(
+                                title: 'Bathroom Cleaning',
+                                price: '₹599',
+                                rating: '★ 4.7',
+                                imageUrl:
+                                    'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=200&auto=format&fit=crop',
+                              ),
+                            ],
+                          )
+                        : Column(
+                            children: recommendedServices.map((service) {
+                              final title = service['name'] ?? '';
+                              final price = service['basePrice'] != null ? '₹${service['basePrice']}' : '₹0';
+                              final rating = service['rating'] != null ? '★ ${service['rating']}' : '★ 5.0';
+                              final imageUrl = service['image'] ?? '';
+                              return RecommendedServiceCard(
+                                title: title,
+                                price: price,
+                                rating: rating,
+                                imageUrl: imageUrl,
+                              );
+                            }).toList(),
+                          ),
 
                     const SizedBox(height: 16),
                   ],
