@@ -11,7 +11,7 @@ class CategoryCard extends StatelessWidget {
     super.key,
     required this.icon,
     required this.label,
-    this.onTap,
+    this.onTap, required title,
   });
 
   @override

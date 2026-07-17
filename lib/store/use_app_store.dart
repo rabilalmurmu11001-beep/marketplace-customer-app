@@ -18,10 +18,28 @@ class HomeCategoriesNotifier extends Notifier<List<Map<String, dynamic>>?> {
   }
 }
 
-final customerProfileProvider = NotifierProvider<CustomerProfileNotifier, Map<String, dynamic>?>(
-  CustomerProfileNotifier.new,
-);
+class HomeRecommendedServicesNotifier
+    extends Notifier<List<Map<String, dynamic>>?> {
+  @override
+  List<Map<String, dynamic>>? build() => null;
 
-final homeCategoriesProvider = NotifierProvider<HomeCategoriesNotifier, List<Map<String, dynamic>>?>(
-  HomeCategoriesNotifier.new,
-);
+  void setRecommendedServices(List<Map<String, dynamic>>? services) {
+    state = services;
+  }
+}
+
+final customerProfileProvider =
+    NotifierProvider<CustomerProfileNotifier, Map<String, dynamic>?>(
+      CustomerProfileNotifier.new,
+    );
+
+final homeCategoriesProvider =
+    NotifierProvider<HomeCategoriesNotifier, List<Map<String, dynamic>>?>(
+      HomeCategoriesNotifier.new,
+    );
+
+final homeRecommendedServicesProvider =
+    NotifierProvider<
+      HomeRecommendedServicesNotifier,
+      List<Map<String, dynamic>>?
+    >(HomeRecommendedServicesNotifier.new);
