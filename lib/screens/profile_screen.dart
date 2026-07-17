@@ -98,19 +98,38 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      // Dark Mode Switch
+                      // Theme Selector Dropdown
                       ListTile(
-                        leading: const Icon(Icons.dark_mode_outlined, size: 18, color: BrandColors.accent),
+                        leading: const Icon(Icons.palette_outlined, size: 18, color: BrandColors.accent),
                         title: const Text(
-                          'Dark Mode Active',
+                          'Appearance Theme',
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                         ),
-                        trailing: Switch(
-                          value: appState.currentThemeMode == ThemeMode.dark,
-                          activeColor: BrandColors.accent,
-                          onChanged: (val) {
-                            appState.toggleTheme(val);
-                          },
+                        trailing: DropdownButtonHideUnderline(
+                          child: DropdownButton<ThemeMode>(
+                            value: appState.currentThemeMode,
+                            dropdownColor: theme.cardColor,
+                            icon: Icon(Icons.arrow_drop_down, color: theme.textTheme.bodyMedium?.color),
+                            items: const [
+                              DropdownMenuItem(
+                                value: ThemeMode.system,
+                                child: Text('System', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              ),
+                              DropdownMenuItem(
+                                value: ThemeMode.light,
+                                child: Text('Light', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              ),
+                              DropdownMenuItem(
+                                value: ThemeMode.dark,
+                                child: Text('Dark', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              ),
+                            ],
+                            onChanged: (mode) {
+                              if (mode != null) {
+                                appState.setThemeMode(mode);
+                              }
+                            },
+                          ),
                         ),
                       ),
                       Divider(height: 1, color: theme.dividerColor),

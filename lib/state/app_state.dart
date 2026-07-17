@@ -35,11 +35,15 @@ class AppState extends ChangeNotifier {
   factory AppState() => _instance;
   AppState._internal();
 
-  ThemeMode currentThemeMode = ThemeMode.dark;
+  ThemeMode currentThemeMode = ThemeMode.system;
+
+  void setThemeMode(ThemeMode mode) {
+    currentThemeMode = mode;
+    notifyListeners();
+  }
 
   void toggleTheme(bool isDark) {
-    currentThemeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-    notifyListeners();
+    setThemeMode(isDark ? ThemeMode.dark : ThemeMode.light);
   }
 
   DateTime chosenDate = DateTime.now();
