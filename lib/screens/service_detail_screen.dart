@@ -182,17 +182,21 @@ class ServiceDetailScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: isDark ? BrandColors.accent.withOpacity(0.12) : const Color(0xFFE6F4F2),
+                            color: isDark ? BrandColors.accent.withValues(alpha: 0.12) : const Color(0xFFE6F4F2),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: isDark
-                                  ? BrandColors.accent.withOpacity(0.2)
-                                  : BrandColors.accent.withOpacity(0.1),
+                                  ? BrandColors.accent.withValues(alpha: 0.2)
+                                  : BrandColors.accent.withValues(alpha: 0.1),
                             ),
                           ),
                           child: Row(
                             children: [
-                              const Text('🛡️', style: TextStyle(fontSize: 18)),
+                              Icon(
+                                Icons.shield_outlined,
+                                size: 18,
+                                color: isDark ? BrandColors.accent : const Color(0xFF0F766E),
+                              ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(

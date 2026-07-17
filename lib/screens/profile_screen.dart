@@ -100,7 +100,7 @@ class ProfileScreen extends StatelessWidget {
                     children: [
                       // Dark Mode Switch
                       ListTile(
-                        leading: const Text('🌓', style: TextStyle(fontSize: 16)),
+                        leading: const Icon(Icons.dark_mode_outlined, size: 18, color: BrandColors.accent),
                         title: const Text(
                           'Dark Mode Active',
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
@@ -116,7 +116,7 @@ class ProfileScreen extends StatelessWidget {
                       Divider(height: 1, color: theme.dividerColor),
                       // Delivery Coordinates
                       _buildProfileOption(
-                        leadingIcon: '📍',
+                        leadingIcon: Icons.location_on_outlined,
                         title: 'Managed Delivery Coordinates',
                         trailingText: '${appState.customerAddresses.length} saved',
                         theme: theme,
@@ -125,7 +125,7 @@ class ProfileScreen extends StatelessWidget {
                       Divider(height: 1, color: theme.dividerColor),
                       // Payment Modules
                       _buildProfileOption(
-                        leadingIcon: '💳',
+                        leadingIcon: Icons.payment_outlined,
                         title: 'Encrypted Payment Modules',
                         trailingText: 'Visa ••••',
                         theme: theme,
@@ -133,7 +133,7 @@ class ProfileScreen extends StatelessWidget {
                       Divider(height: 1, color: theme.dividerColor),
                       // Help Support
                       _buildProfileOption(
-                        leadingIcon: '🛡️',
+                        leadingIcon: Icons.shield_outlined,
                         title: 'Trust & Help Support Matrix',
                         trailingText: '›',
                         theme: theme,
@@ -142,40 +142,6 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Reset Journey
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      appState.resetJourney();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('🔄 Journey Cycle Reset Successful!'),
-                          behavior: SnackBarBehavior.floating,
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                      context.go('/splash');
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: BrandColors.accent, width: 1.5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Text(
-                      'Reset Journey Cycle',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: BrandColors.accent,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
 
                 // Terminate session logout button
                 SizedBox(
@@ -212,14 +178,14 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildProfileOption({
-    required String leadingIcon,
+    required IconData leadingIcon,
     required String title,
     required String trailingText,
     required ThemeData theme,
     VoidCallback? onTap,
   }) {
     return ListTile(
-      leading: Text(leadingIcon, style: const TextStyle(fontSize: 16)),
+      leading: Icon(leadingIcon, size: 18, color: BrandColors.accent),
       title: Text(
         title,
         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),

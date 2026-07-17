@@ -223,7 +223,7 @@ class _ServiceListingScreenState extends State<ServiceListingScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('🔍', style: TextStyle(fontSize: 48)),
+                  const Icon(Icons.search_off_outlined, size: 48, color: BrandColors.accent),
                   const SizedBox(height: 16),
                   Text(
                     'No Services Available',

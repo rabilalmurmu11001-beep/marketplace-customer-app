@@ -52,7 +52,7 @@ class MainShellScreen extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -65,28 +65,28 @@ class MainShellScreen extends StatelessWidget {
               context: context,
               index: 0,
               selectedIndex: selectedIndex,
-              icon: '🏠',
+              icon: Icons.home_outlined,
               label: 'Explore',
             ),
             _buildNavItem(
               context: context,
               index: 1,
               selectedIndex: selectedIndex,
-              icon: '🔍',
+              icon: Icons.search_outlined,
               label: 'Discovery',
             ),
             _buildNavItem(
               context: context,
               index: 2,
               selectedIndex: selectedIndex,
-              icon: '📅',
+              icon: Icons.calendar_today_outlined,
               label: 'Pipelines',
             ),
             _buildNavItem(
               context: context,
               index: 3,
               selectedIndex: selectedIndex,
-              icon: '👤',
+              icon: Icons.person_outline,
               label: 'Account',
             ),
           ],
@@ -99,7 +99,7 @@ class MainShellScreen extends StatelessWidget {
     required BuildContext context,
     required int index,
     required int selectedIndex,
-    required String icon,
+    required IconData icon,
     required String label,
   }) {
     final isSelected = index == selectedIndex;
@@ -116,9 +116,10 @@ class MainShellScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
+              Icon(
                 icon,
-                style: const TextStyle(fontSize: 22),
+                size: 22,
+                color: isSelected ? BrandColors.accent : theme.textTheme.bodyMedium?.color,
               ),
               const SizedBox(height: 4),
               Text(

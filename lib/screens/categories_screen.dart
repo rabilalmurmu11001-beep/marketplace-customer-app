@@ -5,14 +5,14 @@ import '../theme/brand_theme.dart';
 class CategoryItem {
   final String label;
   final String description;
-  final String emoji;
+  final IconData icon;
   final String routeKey;
   final List<Color> gradientColors;
 
   const CategoryItem({
     required this.label,
     required this.description,
-    required this.emoji,
+    required this.icon,
     required this.routeKey,
     required this.gradientColors,
   });
@@ -33,56 +33,56 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     CategoryItem(
       label: 'Cleaning',
       description: 'Home sanitization, sterilization & disinfection',
-      emoji: '🧹',
+      icon: Icons.cleaning_services_outlined,
       routeKey: 'Cleaning',
       gradientColors: [Color(0xFF0D9488), Color(0xFF0F766E)],
     ),
     CategoryItem(
       label: 'Sofa Care',
       description: 'Deep shampooing, fabric treatment & vacuuming',
-      emoji: '🛋️',
+      icon: Icons.weekend_outlined,
       routeKey: 'Sofa',
       gradientColors: [Color(0xFFE11D48), Color(0xFFBE123C)],
     ),
     CategoryItem(
       label: 'AC Servicing',
       description: 'Filter jet washing, coolant top-up & repair',
-      emoji: '❄️',
+      icon: Icons.ac_unit_outlined,
       routeKey: 'AC',
       gradientColors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
     ),
     CategoryItem(
       label: 'Electrician',
       description: 'Wiring fixes, switchboards & lighting setup',
-      emoji: '⚡',
+      icon: Icons.electrical_services_outlined,
       routeKey: 'Electric',
       gradientColors: [Color(0xFFD97706), Color(0xFFB45309)],
     ),
     CategoryItem(
       label: 'Plumbing',
       description: 'Leak repair, tap install & pipe sanitizing',
-      emoji: '🚰',
+      icon: Icons.plumbing_outlined,
       routeKey: 'Plumbing',
       gradientColors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
     ),
     CategoryItem(
       label: 'Painting',
       description: 'Interior wall paint, coatings & color styling',
-      emoji: '🎨',
+      icon: Icons.format_paint_outlined,
       routeKey: 'Painting',
       gradientColors: [Color(0xFF7C3AED), Color(0xFF6D28D9)],
     ),
     CategoryItem(
       label: 'Garden Care',
       description: 'Pruning, lawn clearing & soil maintenance',
-      emoji: '🪴',
+      icon: Icons.yard_outlined,
       routeKey: 'Garden',
       gradientColors: [Color(0xFF059669), Color(0xFF047857)],
     ),
     CategoryItem(
       label: 'Pest Control',
       description: 'Eco-friendly termite, bug & rodent control',
-      emoji: '🐜',
+      icon: Icons.bug_report_outlined,
       routeKey: 'Pest Control',
       gradientColors: [Color(0xFF4B5563), Color(0xFF374151)],
     ),
@@ -98,16 +98,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     if (_searchQuery.trim().isEmpty) {
       return _allCategories;
     }
-    return _allCategories
-        .where((cat) => cat.label.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            cat.description.toLowerCase().contains(_searchQuery.toLowerCase()))
-        .toList();
+    final query = _searchQuery.toLowerCase();
+    return _allCategories.where((c) {
+      return c.label.toLowerCase().contains(query) ||
+          c.description.toLowerCase().contains(query);
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -182,7 +182,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              
+
               // Dynamic Grid
               Expanded(
                 child: _filteredCategories.isEmpty
@@ -190,7 +190,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text('🧐', style: TextStyle(fontSize: 48)),
+                            Icon(Icons.search_off_outlined, size: 48, color: theme.dividerColor),
                             const SizedBox(height: 16),
                             Text(
                               'No Categories Match Search',
@@ -220,7 +220,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           final cat = _filteredCategories[index];
                           return InkWell(
                             onTap: () {
-                              // Route to search and pre-filter by the tapped category
                               context.go('/search?category=${cat.routeKey}');
                             },
                             borderRadius: BorderRadius.circular(20),
@@ -241,7 +240,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Styled Emoji Container
+                                  // Styled Icon Container
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
@@ -252,9 +251,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                       ),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: Text(
-                                      cat.emoji,
-                                      style: const TextStyle(fontSize: 22, color: Colors.white),
+                                    child: Icon(
+                                      cat.icon,
+                                      size: 22,
+                                      color: Colors.white,
                                     ),
                                   ),
                                   const Spacer(),

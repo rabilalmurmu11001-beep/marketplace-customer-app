@@ -92,7 +92,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
                       TextFormField(
                         controller: _labelController,
                         style: const TextStyle(fontSize: 13),
-                        decoration: _buildInputDecoration('e.g. Vacation Home 🏡', theme),
+                        decoration: _buildInputDecoration('e.g. Vacation Home', theme),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Label is required';
@@ -308,7 +308,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('📍', style: TextStyle(fontSize: 48)),
+                    const Icon(Icons.location_off_outlined, size: 48, color: BrandColors.accent),
                     const SizedBox(height: 16),
                     Text(
                       'No saved coordinates found',
@@ -346,7 +346,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Text('📍', style: TextStyle(fontSize: 20)),
+                    const Icon(Icons.location_on_outlined, size: 20, color: BrandColors.accent),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(

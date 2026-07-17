@@ -49,9 +49,9 @@ class _BookingListScreenState extends State<BookingListScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: _activeTab == 0 ? (isDark ? BrandColors.accent.withOpacity(0.12) : const Color(0xFFE6F4F2)) : Colors.transparent,
+                          color: _activeTab == 0 ? (isDark ? BrandColors.accent.withValues(alpha: 0.12) : const Color(0xFFE6F4F2)) : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
-                          border: _activeTab == 0 ? Border.all(color: BrandColors.accent.withOpacity(0.2)) : null,
+                          border: _activeTab == 0 ? Border.all(color: BrandColors.accent.withValues(alpha: 0.2)) : null,
                         ),
                         child: Text(
                           'Active Logs',
@@ -71,9 +71,9 @@ class _BookingListScreenState extends State<BookingListScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: _activeTab == 1 ? (isDark ? BrandColors.accent.withOpacity(0.12) : const Color(0xFFE6F4F2)) : Colors.transparent,
+                          color: _activeTab == 1 ? (isDark ? BrandColors.accent.withValues(alpha: 0.12) : const Color(0xFFE6F4F2)) : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
-                          border: _activeTab == 1 ? Border.all(color: BrandColors.accent.withOpacity(0.2)) : null,
+                          border: _activeTab == 1 ? Border.all(color: BrandColors.accent.withValues(alpha: 0.2)) : null,
                         ),
                         child: Text(
                           'Settled Logs',
@@ -105,7 +105,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('📅', style: TextStyle(fontSize: 48)),
+                    const Icon(Icons.calendar_month_outlined, size: 48, color: BrandColors.accent),
                     const SizedBox(height: 16),
                     Text(
                       'No Active Bookings',
@@ -135,7 +135,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
                       border: Border.all(color: theme.dividerColor),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
+                          color: Colors.black.withValues(alpha: 0.02),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -150,7 +150,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: BrandColors.accent.withOpacity(0.1),
+                                color: BrandColors.accent.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: const Text(
@@ -270,7 +270,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text(

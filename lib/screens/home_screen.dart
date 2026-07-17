@@ -9,7 +9,6 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       body: SafeArea(
@@ -33,7 +32,7 @@ class HomeScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Good Morning 👋',
+                            'Good Morning',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontSize: 12,
                             ),
@@ -55,9 +54,10 @@ class HomeScreen extends StatelessWidget {
                           shape: BoxShape.circle,
                           border: Border.all(color: theme.dividerColor),
                         ),
-                        child: const Text(
-                          '🔔',
-                          style: TextStyle(fontSize: 16),
+                        child: Icon(
+                          Icons.notifications_none_outlined,
+                          size: 18,
+                          color: theme.textTheme.bodyMedium?.color,
                         ),
                       ),
                     ],
@@ -67,9 +67,10 @@ class HomeScreen extends StatelessWidget {
                   // Location Selector
                   Row(
                     children: [
-                      const Text(
-                        '📍',
-                        style: TextStyle(fontSize: 16),
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 16,
+                        color: BrandColors.accent,
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -151,14 +152,14 @@ class HomeScreen extends StatelessWidget {
                     crossAxisSpacing: 12,
                     childAspectRatio: 0.85,
                     children: [
-                      _buildCategoryItem(context, '🧹', 'Cleaning', theme),
-                      _buildCategoryItem(context, '⚡', 'Electric', theme),
-                      _buildCategoryItem(context, '🚰', 'Plumbing', theme),
-                      _buildCategoryItem(context, '❄️', 'AC', theme),
-                      _buildCategoryItem(context, '🛋️', 'Sofa', theme),
-                      _buildCategoryItem(context, '🎨', 'Painting', theme),
-                      _buildCategoryItem(context, '🪴', 'Garden', theme),
-                      _buildCategoryItem(context, '🐜', 'Pest Control', theme),
+                      _buildCategoryItem(context, Icons.cleaning_services_outlined, 'Cleaning', theme),
+                      _buildCategoryItem(context, Icons.electrical_services_outlined, 'Electric', theme),
+                      _buildCategoryItem(context, Icons.plumbing_outlined, 'Plumbing', theme),
+                      _buildCategoryItem(context, Icons.ac_unit_outlined, 'AC', theme),
+                      _buildCategoryItem(context, Icons.weekend_outlined, 'Sofa', theme),
+                      _buildCategoryItem(context, Icons.format_paint_outlined, 'Painting', theme),
+                      _buildCategoryItem(context, Icons.yard_outlined, 'Garden', theme),
+                      _buildCategoryItem(context, Icons.bug_report_outlined, 'Pest Control', theme),
                     ],
                   ),
                   const SizedBox(height: 28),
@@ -288,8 +289,10 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Row(
                 children: [
+                  const Icon(Icons.access_time, size: 12, color: Colors.white70),
+                  const SizedBox(width: 4),
                   const Text(
-                    '⏱️ Arrival Target: ',
+                    'Arrival Target: ',
                     style: TextStyle(fontSize: 10, color: Colors.white70),
                   ),
                   Container(
@@ -373,7 +376,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryItem(BuildContext context, String icon, String label, ThemeData theme) {
+  Widget _buildCategoryItem(BuildContext context, IconData icon, String label, ThemeData theme) {
     return InkWell(
       onTap: () => context.go('/search'),
       borderRadius: BorderRadius.circular(16),
@@ -386,9 +389,10 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
+            Icon(
               icon,
-              style: const TextStyle(fontSize: 26),
+              size: 24,
+              color: BrandColors.accent,
             ),
             const SizedBox(height: 6),
             Text(

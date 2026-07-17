@@ -49,8 +49,8 @@ class AppState extends ChangeNotifier {
   bool isFulfillmentPipelineRunning = false;
 
   final List<Address> customerAddresses = [
-    Address(id: 1, label: 'Home Flat 🏠', street: '821 West End Dr', apt: 'Apt 4B', city: 'New York', isDefault: true),
-    Address(id: 2, label: 'Office Suite 💼', street: '350 Fifth Ave', apt: 'Floor 42', city: 'New York', isDefault: false),
+    Address(id: 1, label: 'Home Flat', street: '821 West End Dr', apt: 'Apt 4B', city: 'New York', isDefault: true),
+    Address(id: 2, label: 'Office Suite', street: '350 Fifth Ave', apt: 'Floor 42', city: 'New York', isDefault: false),
   ];
 
   final List<ChatMessage> messageStream = [
@@ -187,8 +187,8 @@ class AppState extends ChangeNotifier {
     isFulfillmentPipelineRunning = false;
     customerAddresses.clear();
     customerAddresses.addAll([
-      Address(id: 1, label: 'Home Flat 🏠', street: '821 West End Dr', apt: 'Apt 4B', city: 'New York', isDefault: true),
-      Address(id: 2, label: 'Office Suite 💼', street: '350 Fifth Ave', apt: 'Floor 42', city: 'New York', isDefault: false),
+      Address(id: 1, label: 'Home Flat', street: '821 West End Dr', apt: 'Apt 4B', city: 'New York', isDefault: true),
+      Address(id: 2, label: 'Office Suite', street: '350 Fifth Ave', apt: 'Floor 42', city: 'New York', isDefault: false),
     ]);
     messageStream.clear();
     messageStream.add(ChatMessage(sender: 'provider', text: 'Hello Emma! I will arrive at your location coords in 20 minutes.', time: '10:30 AM'));

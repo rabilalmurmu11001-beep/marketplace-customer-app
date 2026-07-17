@@ -38,14 +38,27 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
     }
   }
 
+  IconData _getTimeSlotIcon(String groupName) {
+    switch (groupName.toLowerCase()) {
+      case 'morning':
+        return Icons.wb_sunny_outlined;
+      case 'afternoon':
+        return Icons.sunny;
+      case 'evening':
+        return Icons.nights_stay_outlined;
+      default:
+        return Icons.access_time;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     final Map<String, List<String>> timeSlotsGrouped = {
-      '🌅 Morning': ['08:00 AM', '10:00 AM', '11:30 AM'],
-      '☀️ Afternoon': ['01:00 PM', '02:30 PM', '04:00 PM'],
-      '🌙 Evening': ['05:30 PM', '07:00 PM'],
+      'Morning': ['08:00 AM', '10:00 AM', '11:30 AM'],
+      'Afternoon': ['01:00 PM', '02:30 PM', '04:00 PM'],
+      'Evening': ['05:30 PM', '07:00 PM'],
     };
 
     return Scaffold(
@@ -107,7 +120,11 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                         ),
                         child: Row(
                           children: [
-                            const Text('📍', style: TextStyle(fontSize: 18)),
+                            const Icon(
+                              Icons.location_on_outlined,
+                              size: 18,
+                              color: BrandColors.accent,
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: DropdownButtonHideUnderline(
@@ -268,14 +285,24 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              group.key.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                color: theme.textTheme.bodyMedium?.color,
-                                letterSpacing: 0.5,
-                              ),
+                            Row(
+                              children: [
+                                Icon(
+                                  _getTimeSlotIcon(group.key),
+                                  size: 14,
+                                  color: theme.textTheme.bodyMedium?.color,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  group.key.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.textTheme.bodyMedium?.color,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 8),
                             GridView.builder(
