@@ -1,41 +1,33 @@
+import 'package:customer_app/store/use_app_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../state/app_state.dart';
 import '../theme/brand_theme.dart';
 
-class FunnelStep1Screen extends StatefulWidget {
-  const FunnelStep1Screen({super.key});
+class FunnelStep1Screen extends ConsumerStatefulWidget {
+  final Map<String, dynamic>? service;
+  const FunnelStep1Screen({super.key, required this.service});
 
   @override
-  State<FunnelStep1Screen> createState() => _FunnelStep1ScreenState();
+  ConsumerState<FunnelStep1Screen> createState() => _FunnelStep1ScreenState();
 }
 
-class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
+class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
   late TextEditingController _descriptionController;
+  late DateTime scheduleDate = DateTime.now();
+  late String chosenAddressId = '';
+  late String chosenTimeSlot = '';
 
   @override
   void initState() {
     super.initState();
-    _descriptionController = TextEditingController(text: AppState().bookingDescription);
+    _descriptionController = TextEditingController(text: "");
   }
 
   @override
   void dispose() {
     _descriptionController.dispose();
     super.dispose();
-  }
-
-  String _getWeekdayName(int weekday) {
-    switch (weekday) {
-      case 1: return 'Mon';
-      case 2: return 'Tue';
-      case 3: return 'Wed';
-      case 4: return 'Thu';
-      case 5: return 'Fri';
-      case 6: return 'Sat';
-      case 7: return 'Sun';
-      default: return '';
-    }
   }
 
   IconData _getTimeSlotIcon(String groupName) {
@@ -49,6 +41,19 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
       default:
         return Icons.access_time;
     }
+  }
+
+  void handleViewBookingSummery() {
+    context.push(
+      '/funnel-step2',
+      extra: {
+        'service': widget.service,
+        'addressId': chosenAddressId,
+        'scheduleDate': scheduleDate,
+        'timeSlot': chosenTimeSlot,
+        'description': _descriptionController.text,
+      },
+    );
   }
 
   @override
@@ -76,7 +81,7 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
         ),
         leadingWidth: 80,
         title: Text(
-          'FUNNELS: LOGISTICS',
+          'SCHEDULE: SERVICE',
           style: theme.textTheme.titleLarge?.copyWith(
             fontSize: 13,
             fontWeight: FontWeight.w800,
@@ -87,10 +92,9 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
       ),
-      body: ListenableBuilder(
-        listenable: AppState(),
-        builder: (context, _) {
-          final appState = AppState();
+      body: Builder(
+        builder: (context) {
+          final customerAddresses = ref.watch(customerAddressProvider) ?? [];
 
           return Column(
             children: [
@@ -103,7 +107,7 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                     children: [
                       // Address coordinates anchor selector
                       const Text(
-                        'DELIVERY COORDINATES ANCHOR',
+                        'SERVICE COORDINATES',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -112,7 +116,10 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                       ),
                       const SizedBox(height: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: theme.cardColor,
                           borderRadius: BorderRadius.circular(16),
@@ -128,16 +135,19 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: DropdownButtonHideUnderline(
-                                child: DropdownButton<int>(
-                                  value: appState.chosenAddressId,
+                                child: DropdownButton<String>(
+                                  value: chosenAddressId,
                                   isExpanded: true,
                                   dropdownColor: theme.cardColor,
-                                  icon: Icon(Icons.arrow_drop_down, color: theme.textTheme.bodyMedium?.color),
-                                  items: appState.customerAddresses.map((addr) {
-                                    return DropdownMenuItem<int>(
-                                      value: addr.id,
+                                  icon: Icon(
+                                    Icons.arrow_drop_down,
+                                    color: theme.textTheme.bodyMedium?.color,
+                                  ),
+                                  items: customerAddresses.map((addr) {
+                                    return DropdownMenuItem<String>(
+                                      value: addr['id'],
                                       child: Text(
-                                        '${addr.label}: ${addr.street}',
+                                        '${addr['house_number']}, ${addr['street_no_or_name']}, ${addr['city']}',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
@@ -147,7 +157,9 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                                   }).toList(),
                                   onChanged: (val) {
                                     if (val != null) {
-                                      appState.selectAddress(val);
+                                      setState(() {
+                                        chosenAddressId = val;
+                                      });
                                     }
                                   },
                                 ),
@@ -166,105 +178,42 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                       const SizedBox(height: 24),
 
                       // Calendar Date Target
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'CALENDAR DATE TARGET',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
+                      const Text(
+                        'CALENDAR DATE TARGET',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: theme.dividerColor),
+                        ),
+                        child: Theme(
+                          data: theme.copyWith(
+                            colorScheme: theme.colorScheme.copyWith(
+                              primary: BrandColors.accent,
+                              onPrimary: Colors.white,
+                              surface: theme.cardColor,
+                              onSurface: theme.textTheme.bodyLarge?.color,
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.calendar_month_outlined, size: 20, color: BrandColors.accent),
-                            onPressed: () async {
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: appState.chosenDate,
-                                firstDate: DateTime.now(),
-                                lastDate: DateTime.now().add(const Duration(days: 90)),
-                                builder: (context, child) {
-                                  return Theme(
-                                    data: Theme.of(context).copyWith(
-                                      colorScheme: ColorScheme.fromSeed(
-                                        seedColor: BrandColors.accent,
-                                        primary: BrandColors.accent,
-                                        brightness: Theme.of(context).brightness,
-                                      ),
-                                    ),
-                                    child: child!,
-                                  );
-                                },
-                              );
-                              if (picked != null) {
-                                appState.selectDate(picked);
-                              }
+                          child: CalendarDatePicker(
+                            initialDate: scheduleDate,
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 90),
+                            ),
+                            onDateChanged: (picked) {
+                              setState(() {
+                                scheduleDate = picked;
+                              });
                             },
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      // Horizontal scrollable calendar strip (Next 14 days)
-                      SizedBox(
-                        height: 64,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: 14,
-                          itemBuilder: (context, index) {
-                            final date = DateTime.now().add(Duration(days: index));
-                            final isSelected = DateUtils.isSameDay(appState.chosenDate, date);
-                            final weekday = _getWeekdayName(date.weekday).toUpperCase();
-                            final day = date.day.toString();
-
-                            return GestureDetector(
-                              onTap: () => appState.selectDate(date),
-                              child: Container(
-                                width: 56,
-                                margin: const EdgeInsets.only(right: 8),
-                                decoration: BoxDecoration(
-                                  color: isSelected ? BrandColors.accent : theme.cardColor,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isSelected ? BrandColors.accent : theme.dividerColor,
-                                  ),
-                                  boxShadow: isSelected
-                                      ? [
-                                          BoxShadow(
-                                            color: BrandColors.accent.withValues(alpha: 0.2),
-                                            blurRadius: 10,
-                                            offset: const Offset(0, 4),
-                                          )
-                                        ]
-                                      : null,
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      weekday,
-                                      style: TextStyle(
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.bold,
-                                        color: isSelected ? Colors.white70 : theme.textTheme.bodyMedium?.color,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      day,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        color: isSelected ? Colors.white : theme.textTheme.bodyLarge?.color,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
                         ),
                       ),
                       const SizedBox(height: 28),
@@ -308,33 +257,41 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                             GridView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
-                                childAspectRatio: 2.2,
-                              ),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 3,
+                                    crossAxisSpacing: 8,
+                                    mainAxisSpacing: 8,
+                                    childAspectRatio: 2.2,
+                                  ),
                               itemCount: group.value.length,
                               itemBuilder: (context, index) {
                                 final time = group.value[index];
-                                final isSelected = appState.chosenTimeSlot == time;
+                                final isSelected = chosenTimeSlot == time;
                                 return GestureDetector(
-                                  onTap: () => appState.selectTimeSlot(time),
+                                  onTap: () => setState(() {
+                                    chosenTimeSlot = time;
+                                  }),
                                   child: Container(
                                     alignment: Alignment.center,
                                     decoration: BoxDecoration(
-                                      color: isSelected ? BrandColors.accent : theme.cardColor,
+                                      color: isSelected
+                                          ? BrandColors.accent
+                                          : theme.cardColor,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: isSelected ? BrandColors.accent : theme.dividerColor,
+                                        color: isSelected
+                                            ? BrandColors.accent
+                                            : theme.dividerColor,
                                       ),
                                       boxShadow: isSelected
                                           ? [
                                               BoxShadow(
-                                                color: BrandColors.accent.withValues(alpha: 0.2),
+                                                color: BrandColors.accent
+                                                    .withValues(alpha: 0.2),
                                                 blurRadius: 10,
                                                 offset: const Offset(0, 4),
-                                              )
+                                              ),
                                             ]
                                           : null,
                                     ),
@@ -343,7 +300,9 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
-                                        color: isSelected ? Colors.white : theme.textTheme.bodyLarge?.color,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : theme.textTheme.bodyLarge?.color,
                                       ),
                                     ),
                                   ),
@@ -371,16 +330,15 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                         controller: _descriptionController,
                         maxLines: 3,
                         style: const TextStyle(fontSize: 13),
-                        onChanged: (val) {
-                          appState.updateBookingDescription(val);
-                        },
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: theme.cardColor,
-                          hintText: 'Describe details, specific instructions, or what you want done...',
+                          hintText:
+                              'Describe details, specific instructions, or what you want done...',
                           hintStyle: TextStyle(
                             fontSize: 12,
-                            color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+                            color: theme.textTheme.bodyMedium?.color
+                                ?.withValues(alpha: 0.6),
                           ),
                           contentPadding: const EdgeInsets.all(16),
                           enabledBorder: OutlineInputBorder(
@@ -389,7 +347,9 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: BrandColors.accent),
+                            borderSide: const BorderSide(
+                              color: BrandColors.accent,
+                            ),
                           ),
                         ),
                       ),
@@ -400,12 +360,13 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
               ),
               // Footer Button
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   color: theme.cardColor,
-                  border: Border(
-                    top: BorderSide(color: theme.dividerColor),
-                  ),
+                  border: Border(top: BorderSide(color: theme.dividerColor)),
                 ),
                 child: SafeArea(
                   top: false,
@@ -413,7 +374,7 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: () => context.push('/funnel-step2'),
+                      onPressed: handleViewBookingSummery,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: BrandColors.accent,
                         foregroundColor: Colors.white,
@@ -424,7 +385,7 @@ class _FunnelStep1ScreenState extends State<FunnelStep1Screen> {
                         shadowColor: BrandColors.accent.withValues(alpha: 0.3),
                       ),
                       child: const Text(
-                        'Review Manifest Order',
+                        'Review Booking Details',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,

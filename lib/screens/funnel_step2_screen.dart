@@ -1,22 +1,70 @@
+import 'package:customer_app/network/services/sevicesService.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../state/app_state.dart';
 import '../theme/brand_theme.dart';
 
-class FunnelStep2Screen extends StatefulWidget {
-  const FunnelStep2Screen({super.key});
+class FunnelStep2Screen extends ConsumerStatefulWidget {
+  final Map<String, dynamic>? bookingSummery;
+  const FunnelStep2Screen({super.key, required this.bookingSummery});
 
   @override
-  State<FunnelStep2Screen> createState() => _FunnelStep2ScreenState();
+  ConsumerState<FunnelStep2Screen> createState() => _FunnelStep2ScreenState();
 }
 
-class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
+class _FunnelStep2ScreenState extends ConsumerState<FunnelStep2Screen> {
   double _swipeProgress = 0.0;
   bool _isBooked = false;
 
   String _getDateString(DateTime date) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  Future<void> bookService() async {
+    try {
+      final res = await ref.read(servicesServiceProvider).bookService({
+        "addresId": widget.bookingSummery?['addressId'],
+        "date": widget.bookingSummery?['scheduleDate'],
+        "serviceId": widget.bookingSummery?['service']?['id'],
+        "timeSlot": widget.bookingSummery?['timeSlot'],
+        "notes": widget.bookingSummery?['description'],
+      });
+
+      if (res.statusCode == 201) {
+        // Show success dialog or snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🎉 Booking Manifest Dispatched Successfully!'),
+            backgroundColor: BrandColors.accent,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (mounted) {
+            context.go('/home');
+          }
+        });
+      }
+    } catch (err) {
+      print('Error while booking service: $err');
+    }
   }
 
   void _onSwipeComplete() {
@@ -25,24 +73,12 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
       _isBooked = true;
     });
 
-    final appState = AppState();
-    appState.bookFulfillment();
+    bookService();
+  }
 
-    // Show success dialog or snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('🎉 Booking Manifest Dispatched Successfully!'),
-        backgroundColor: BrandColors.accent,
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
-      ),
-    );
-
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        context.go('/home');
-      }
-    });
+  String _asString(dynamic value, [String fallback = '']) {
+    if (value == null) return fallback;
+    return value.toString();
   }
 
   @override
@@ -99,7 +135,10 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(10),
                             child: Image.network(
-                              'https://images.unsplash.com/photo-1589405858862-2ac9cbb41321?q=80&w=200&auto=format&fit=crop',
+                              _asString(
+                                widget.bookingSummery?['service']?['image'],
+                                'https://images.unsplash.com/photo-1589405858862-2ac9cbb41321?q=80&w=200&auto=format&fit=crop',
+                              ),
                               width: 40,
                               height: 40,
                               fit: BoxFit.cover,
@@ -107,8 +146,14 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                                 return Container(
                                   width: 40,
                                   height: 40,
-                                  color: BrandColors.accent.withValues(alpha: 0.1),
-                                  child: const Icon(Icons.cleaning_services_outlined, size: 20, color: BrandColors.accent),
+                                  color: BrandColors.accent.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  child: const Icon(
+                                    Icons.cleaning_services_outlined,
+                                    size: 20,
+                                    color: BrandColors.accent,
+                                  ),
                                 );
                               },
                             ),
@@ -119,7 +164,7 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Sofa Deep Chemical Wash',
+                                  widget.bookingSummery?['service']?['name'],
                                   style: theme.textTheme.bodyLarge?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
@@ -127,7 +172,8 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  'Premium Sanitization • Fixed Quote',
+                                  widget
+                                      .bookingSummery?['service']?['description'],
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     fontSize: 10.5,
                                   ),
@@ -151,12 +197,31 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildSummaryRow('Target Date:', _getDateString(appState.chosenDate), theme, valueColor: theme.textTheme.bodyLarge?.color),
+                          _buildSummaryRow(
+                            'Target Date:',
+                            _getDateString(
+                              widget.bookingSummery?['scheduleDate'],
+                            ),
+                            theme,
+                            valueColor: theme.textTheme.bodyLarge?.color,
+                          ),
                           const SizedBox(height: 10),
-                          _buildSummaryRow('Window Arrival:', appState.chosenTimeSlot, theme, valueColor: BrandColors.accent),
+                          _buildSummaryRow(
+                            'Window Arrival:',
+                            widget.bookingSummery?['timeSlot'],
+                            theme,
+                            valueColor: BrandColors.accent,
+                          ),
                           const SizedBox(height: 10),
-                          _buildSummaryRow('Address Target:', address.street, theme, valueColor: theme.textTheme.bodyLarge?.color),
-                          if (appState.bookingDescription.trim().isNotEmpty) ...[
+                          _buildSummaryRow(
+                            'Address Target:',
+                            address.street,
+                            theme,
+                            valueColor: theme.textTheme.bodyLarge?.color,
+                          ),
+                          if (widget.bookingSummery?['description']
+                              .trim()
+                              .isNotEmpty) ...[
                             const SizedBox(height: 10),
                             const Divider(height: 1),
                             const SizedBox(height: 10),
@@ -174,7 +239,7 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  appState.bookingDescription,
+                                  widget.bookingSummery?['description'],
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
@@ -200,11 +265,23 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                       ),
                       child: Column(
                         children: [
-                          _buildSummaryRow('Base Rate Quote:', '\$49.00', theme),
+                          _buildSummaryRow(
+                            'Base Rate Quote:',
+                            '₹ ${widget.bookingSummery?['service']?['basePrice']}',
+                            theme,
+                          ),
                           const SizedBox(height: 8),
-                          _buildSummaryRow('Sanitization Materials Fee:', '\$5.00', theme),
+                          _buildSummaryRow(
+                            'Sanitization Materials Fee:',
+                            '₹ 5.00',
+                            theme,
+                          ),
                           const SizedBox(height: 8),
-                          _buildSummaryRow('Ecosystem Regulatory Taxes:', '\$2.40', theme),
+                          _buildSummaryRow(
+                            'Ecosystem Regulatory Taxes:',
+                            '₹ 2.40',
+                            theme,
+                          ),
                           const SizedBox(height: 12),
                           const Divider(height: 1),
                           const SizedBox(height: 12),
@@ -219,7 +296,7 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                                 ),
                               ),
                               const Text(
-                                '\$56.40',
+                                '₹ 56.40',
                                 style: TextStyle(
                                   color: BrandColors.accent,
                                   fontWeight: FontWeight.w800,
@@ -258,7 +335,9 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                       // Background Track Text
                       Center(
                         child: Text(
-                          _isBooked ? 'BOOKING DISPATCHED' : 'SWIPE TO CONFIRM BOOKING',
+                          _isBooked
+                              ? 'BOOKING DISPATCHED'
+                              : 'SWIPE TO CONFIRM BOOKING',
                           style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -277,7 +356,8 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                           onHorizontalDragUpdate: (details) {
                             if (_isBooked) return;
                             setState(() {
-                              _swipeProgress += details.primaryDelta! / maxSlideDistance;
+                              _swipeProgress +=
+                                  details.primaryDelta! / maxSlideDistance;
                               if (_swipeProgress < 0.0) _swipeProgress = 0.0;
                               if (_swipeProgress > 1.0) _swipeProgress = 1.0;
                             });
@@ -306,7 +386,7 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
                                   color: BrandColors.accent.withOpacity(0.3),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
-                                )
+                                ),
                               ],
                             ),
                             child: const Center(
@@ -342,12 +422,7 @@ class _FunnelStep2ScreenState extends State<FunnelStep2Screen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontSize: 11,
-          ),
-        ),
+        Text(label, style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11)),
         Text(
           value,
           style: TextStyle(

@@ -1,9 +1,15 @@
-# Miscellaneous
+# Miscellaneous & OS
 *.class
 *.log
 *.pyc
 *.swp
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 .atom/
 .build/
 .buildlog/
@@ -12,34 +18,76 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# Environment & Secrets
+.env
+.env.*
+*.env
+*.keystore
+*.jks
+*.p12
+*.key
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# IDEs & Editors
 *.iml
 *.ipr
 *.iws
 .idea/
+.vscode/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# Dart & Flutter
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
 /build/
 /coverage/
+lib/generated_plugin_registrant.dart
+doc/api/
 
-# Symbolication related
+# Android
+android/.gradle/
+android/local.properties
+android/captures/
+android/gradleBuild/
+android/.externalNativeBuild/
+android/.cxx/
+android/app/debug/
+android/app/profile/
+android/app/release/
+android/app/sentry.properties
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
+ios/Flutter/flutter_export_environment.sh
+ios/ServiceDefinitions
+ios/Runner/GeneratedPluginRegistrant.h
+ios/Runner/GeneratedPluginRegistrant.m
+ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+ios/Runner.xcworkspace/xcuserdata/
+*.xcuserdata
+
+# macOS
+macos/Pods/
+macos/Flutter/ephemeral/
+macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Linux
+linux/flutter/ephemeral/
+
+# Windows
+windows/flutter/ephemeral/
+
+# Symbolication & Obfuscation
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release

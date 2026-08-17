@@ -94,9 +94,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (couponsList != null) {
         ref
             .read(homeCouponsProvider.notifier)
-            .setCoupons(
-              List<Map<String, dynamic>>.from(couponsList),
-            );
+            .setCoupons(List<Map<String, dynamic>>.from(couponsList));
       }
     } catch (_) {
       // Gracefully ignore refresh network failure in pull-to-refresh
@@ -123,10 +121,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final recommendedServices = ref.watch(homeRecommendedServicesProvider);
     final coupons = ref.watch(homeCouponsProvider);
 
-
     print('Coupon Data: $coupons'); // Debugging line to check coupon data
-
-
 
     return Scaffold(
       body: SafeArea(
@@ -265,6 +260,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   title: data['name'] ?? '',
                                   icon: getCategoryIcon(data['name'] ?? ''),
                                   label: data['name'] ?? '',
+                                  onTap: () => context.push(
+                                    '/search?category=${data['id']}',
+                                  ),
                                 ),
                               )
                               .toList() ??
@@ -301,16 +299,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               final title = service['name'] ?? '';
                               final price = service['basePrice'] != null
                                   ? '₹${service['basePrice']}'
-                                  : '₹0';
+                                  : '₹ 0';
                               final rating = service['rating'] != null
                                   ? '★ ${service['rating']}'
                                   : '★ 5.0';
                               final imageUrl = service['image'] ?? '';
+                              final serviceId = service['id'] ?? '';
                               return RecommendedServiceCard(
                                 title: title,
                                 price: price,
                                 rating: rating,
                                 imageUrl: imageUrl,
+                                serviceId: serviceId,
                               );
                             }).toList(),
                           ),

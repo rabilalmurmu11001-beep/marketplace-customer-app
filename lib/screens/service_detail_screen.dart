@@ -1,14 +1,131 @@
+import 'package:customer_app/network/services/sevicesService.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/brand_theme.dart';
 
-class ServiceDetailScreen extends StatelessWidget {
-  const ServiceDetailScreen({super.key});
+class ServiceDetailScreen extends ConsumerStatefulWidget {
+  final String serviceId;
+
+  const ServiceDetailScreen({super.key, required this.serviceId});
+
+  @override
+  ConsumerState<ServiceDetailScreen> createState() =>
+      _ServiceDetailScreenState();
+}
+
+class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
+  Map<String, dynamic>? _serviceData;
+  bool _isLoading = true;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadServiceDetail();
+    });
+  }
+
+  @override
+  void didUpdateWidget(ServiceDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.serviceId != widget.serviceId) {
+      _loadServiceDetail();
+    }
+  }
+
+  Future<void> _loadServiceDetail() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
+    try {
+      final res = await ref
+          .read(servicesServiceProvider)
+          .getServiceDetail(widget.serviceId);
+
+      if (res.data is Map<String, dynamic>) {
+        final data = res.data as Map<String, dynamic>;
+        setState(() {
+          _serviceData = (data['service'] ?? data) as Map<String, dynamic>;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
+    }
+  }
+
+  String _asString(dynamic value, [String fallback = '']) {
+    if (value == null) return fallback;
+    return value.toString();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_hasError || _serviceData == null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          elevation: 0,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: BrandColors.accent,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Unable to Load Service',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _loadServiceDetail,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final service = _serviceData!;
+    final imageUrl = _asString(
+      service['image'],
+      'https://images.unsplash.com/photo-1589405858862-2ac9cbb41321?q=80&w=800&auto=format&fit=crop',
+    );
+    final title = _asString(service['name'], 'Sofa Deep Chemical Wash');
+    final badgeText = _asString(service['badgeText'], 'PREMIUM SANITIZATION');
+    final description = _asString(service['description'], '');
+    final price = _asString(service['basePrice'], '\$49.00');
+    final List reviews = service['reviews'] ?? [];
 
     return Scaffold(
       body: Column(
@@ -24,7 +141,9 @@ class ServiceDetailScreen extends StatelessWidget {
                     children: [
                       // Hero Container
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+                        borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(24),
+                        ),
                         child: Container(
                           height: 220,
                           width: double.infinity,
@@ -34,35 +153,49 @@ class ServiceDetailScreen extends StatelessWidget {
                               // The Background Image
                               Positioned.fill(
                                 child: Image.network(
-                                  'https://images.unsplash.com/photo-1589405858862-2ac9cbb41321?q=80&w=800&auto=format&fit=crop',
+                                  imageUrl,
                                   fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Container(
-                                      decoration: const BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [Color(0xFF0F172A), BrandColors.primary, Color(0xFF0D9488)],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                      ),
-                                      child: const Center(
-                                        child: SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(BrandColors.accent),
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                        if (loadingProgress == null) {
+                                          return child;
+                                        }
+                                        return Container(
+                                          decoration: const BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                Color(0xFF0F172A),
+                                                BrandColors.primary,
+                                                Color(0xFF0D9488),
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    );
-                                  },
+                                          child: const Center(
+                                            child: SizedBox(
+                                              width: 24,
+                                              height: 24,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                      Color?
+                                                    >(BrandColors.accent),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
                                   errorBuilder: (context, error, stackTrace) {
                                     return Container(
                                       decoration: const BoxDecoration(
                                         gradient: LinearGradient(
-                                          colors: [Color(0xFF0F172A), BrandColors.primary, Color(0xFF0D9488)],
+                                          colors: [
+                                            Color(0xFF0F172A),
+                                            BrandColors.primary,
+                                            Color(0xFF0D9488),
+                                          ],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
                                         ),
@@ -97,7 +230,7 @@ class ServiceDetailScreen extends StatelessWidget {
                               ),
 
                               // Text details overlay
-                              const Positioned(
+                              Positioned(
                                 left: 20,
                                 right: 20,
                                 bottom: 20,
@@ -105,18 +238,18 @@ class ServiceDetailScreen extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'PREMIUM SANITIZATION',
-                                      style: TextStyle(
+                                      badgeText.toUpperCase(),
+                                      style: const TextStyle(
                                         fontSize: 8,
                                         fontWeight: FontWeight.w800,
                                         color: Colors.white70,
                                         letterSpacing: 1.0,
                                       ),
                                     ),
-                                    SizedBox(height: 6),
+                                    const SizedBox(height: 6),
                                     Text(
-                                      'Sofa Deep Chemical Wash',
-                                      style: TextStyle(
+                                      title,
+                                      style: const TextStyle(
                                         fontSize: 22,
                                         fontWeight: FontWeight.w800,
                                         color: Colors.white,
@@ -138,7 +271,10 @@ class ServiceDetailScreen extends StatelessWidget {
                             onTap: () => context.pop(),
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: theme.cardColor.withOpacity(0.9),
                                 borderRadius: BorderRadius.circular(12),
@@ -172,7 +308,7 @@ class ServiceDetailScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  
+
                   Padding(
                     padding: const EdgeInsets.all(20.0),
                     child: Column(
@@ -182,7 +318,9 @@ class ServiceDetailScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: isDark ? BrandColors.accent.withValues(alpha: 0.12) : const Color(0xFFE6F4F2),
+                            color: isDark
+                                ? BrandColors.accent.withValues(alpha: 0.12)
+                                : const Color(0xFFE6F4F2),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: isDark
@@ -195,7 +333,9 @@ class ServiceDetailScreen extends StatelessWidget {
                               Icon(
                                 Icons.shield_outlined,
                                 size: 18,
-                                color: isDark ? BrandColors.accent : const Color(0xFF0F766E),
+                                color: isDark
+                                    ? BrandColors.accent
+                                    : const Color(0xFF0F766E),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
@@ -204,7 +344,9 @@ class ServiceDetailScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: isDark ? BrandColors.accent : const Color(0xFF0F766E),
+                                    color: isDark
+                                        ? BrandColors.accent
+                                        : const Color(0xFF0F766E),
                                     height: 1.3,
                                   ),
                                 ),
@@ -216,7 +358,7 @@ class ServiceDetailScreen extends StatelessWidget {
 
                         // Operator Portfolio
                         const Text(
-                          'OPERATOR WORK PORTFOLIO',
+                          'SERVICE DESCRIPTION',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -225,7 +367,7 @@ class ServiceDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'John Hanson has certified technical specialization records spanning 8+ years across ecosystem mechanical cleaning models.',
+                          description,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontSize: 13,
                             height: 1.4,
@@ -275,104 +417,58 @@ class ServiceDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
 
-                        // Review Card 1
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: theme.cardColor,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: theme.dividerColor),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.01),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Liam G.',
-                                    style: theme.textTheme.bodyLarge?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  const Text(
-                                    '★★★★★',
-                                    style: TextStyle(
-                                      color: Colors.amber,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Exceptional compliance framework. Detergents are completely non-toxic. Highly scannable execution metrics.',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontSize: 12,
-                                  height: 1.4,
+                        ...reviews.map((data) {
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: theme.cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: theme.dividerColor),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.01),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Review Card 2
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: theme.cardColor,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: theme.dividerColor),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.01),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Sarah M.',
-                                    style: theme.textTheme.bodyLarge?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '${data['user']['name']}',
+                                      style: theme.textTheme.bodyLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
                                     ),
-                                  ),
-                                  const Text(
-                                    '★★★★★',
-                                    style: TextStyle(
-                                      color: Colors.amber,
-                                      fontSize: 12,
+                                    Text(
+                                      '★ ${data['ratings']}',
+                                      style: const TextStyle(
+                                        color: Colors.amber,
+                                        fontSize: 12,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Very professional. The sofa looks brand new now and they completed it within an hour.',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontSize: 12,
-                                  height: 1.4,
+                                  ],
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '${data['note']}',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontSize: 12,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
                       ],
                     ),
                   ),
@@ -380,15 +476,13 @@ class ServiceDetailScreen extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // Pricing Footer Bottom Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
               color: theme.cardColor,
-              border: Border(
-                top: BorderSide(color: theme.dividerColor),
-              ),
+              border: Border(top: BorderSide(color: theme.dividerColor)),
             ),
             child: SafeArea(
               top: false,
@@ -408,9 +502,9 @@ class ServiceDetailScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      const Text(
-                        '\$49.00',
-                        style: TextStyle(
+                      Text(
+                        '₹ $price',
+                        style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: BrandColors.accent,
@@ -419,11 +513,15 @@ class ServiceDetailScreen extends StatelessWidget {
                     ],
                   ),
                   ElevatedButton(
-                    onPressed: () => context.push('/funnel-step1'),
+                    onPressed: () =>
+                        context.push('/funnel-step1', extra: _serviceData),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: BrandColors.accent,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),

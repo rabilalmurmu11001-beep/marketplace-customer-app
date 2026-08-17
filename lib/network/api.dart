@@ -5,7 +5,7 @@ import 'package:customer_app/routing/app_router.dart';
 
 // final String host = 'http://13.51.197.245:4000';
 final String host =
-    'https://6012-2402-3a80-4134-2c89-9234-b57a-f414-62e3.ngrok-free.app';
+    'https://7b99-2402-3a80-24d-e71f-d4b5-d3d9-b657-c327.ngrok-free.app';
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(

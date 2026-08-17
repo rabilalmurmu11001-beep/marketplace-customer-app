@@ -7,6 +7,7 @@ class RecommendedServiceCard extends StatelessWidget {
   final String price;
   final String rating;
   final String imageUrl;
+  final String serviceId;
 
   const RecommendedServiceCard({
     super.key,
@@ -14,6 +15,7 @@ class RecommendedServiceCard extends StatelessWidget {
     required this.price,
     required this.rating,
     required this.imageUrl,
+    required this.serviceId,
   });
 
   @override
@@ -44,14 +46,18 @@ class RecommendedServiceCard extends StatelessWidget {
                 return Container(
                   width: 60,
                   height: 60,
-                  color: isDark ? BrandColors.darkBorder : BrandColors.lightBorder,
+                  color: isDark
+                      ? BrandColors.darkBorder
+                      : BrandColors.lightBorder,
                   child: const Center(
                     child: SizedBox(
                       width: 14,
                       height: 14,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(BrandColors.accent),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          BrandColors.accent,
+                        ),
                       ),
                     ),
                   ),
@@ -61,7 +67,9 @@ class RecommendedServiceCard extends StatelessWidget {
                 return Container(
                   width: 60,
                   height: 60,
-                  color: isDark ? BrandColors.darkBorder : BrandColors.lightBorder,
+                  color: isDark
+                      ? BrandColors.darkBorder
+                      : BrandColors.lightBorder,
                   child: const Center(
                     child: Icon(
                       Icons.image_not_supported_outlined,
@@ -119,7 +127,8 @@ class RecommendedServiceCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               ElevatedButton(
-                onPressed: () => context.go('/service-detail'),
+                onPressed: () =>
+                    context.go('/service-detail?service_id=$serviceId'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: BrandColors.accent,
                   foregroundColor: Colors.white,

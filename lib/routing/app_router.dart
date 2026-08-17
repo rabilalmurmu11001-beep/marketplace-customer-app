@@ -22,22 +22,13 @@ final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
   routes: [
     // Auth & Gateways (Outside Bottom Nav Shell)
-    GoRoute(
-      path: '/splash',
-      builder: (context, state) => const SplashScreen(),
-    ),
+    GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
     GoRoute(
       path: '/onboarding',
       builder: (context, state) => const OnboardingScreen(),
     ),
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: '/signup',
-      builder: (context, state) => const SignupScreen(),
-    ),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+    GoRoute(path: '/signup', builder: (context, state) => const SignupScreen()),
     GoRoute(
       path: '/categories',
       builder: (context, state) => const CategoriesScreen(),
@@ -47,10 +38,7 @@ final GoRouter appRouter = GoRouter(
     ShellRoute(
       builder: (context, state, child) => MainShellScreen(child: child),
       routes: [
-        GoRoute(
-          path: '/home',
-          builder: (context, state) => const HomeScreen(),
-        ),
+        GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
         GoRoute(
           path: '/search',
           builder: (context, state) {
@@ -72,24 +60,30 @@ final GoRouter appRouter = GoRouter(
     // Sub-screens (Outside Bottom Nav Shell to hide bottom bar)
     GoRoute(
       path: '/service-detail',
-      builder: (context, state) => const ServiceDetailScreen(),
+      builder: (context, state) {
+        final serviceId = state.uri.queryParameters['service_id'] ?? '';
+        return ServiceDetailScreen(serviceId: serviceId);
+      },
     ),
     GoRoute(
       path: '/funnel-step1',
-      builder: (context, state) => const FunnelStep1Screen(),
+      builder: (context, state) {
+        final service = state.extra as Map<String, dynamic>;
+        return FunnelStep1Screen(service: service);
+      },
     ),
     GoRoute(
       path: '/funnel-step2',
-      builder: (context, state) => const FunnelStep2Screen(),
+      builder: (context, state) {
+        final bookingSummery = state.extra as Map<String, dynamic>;
+        return FunnelStep2Screen(bookingSummery: bookingSummery);
+      },
     ),
     GoRoute(
       path: '/booking-detail',
       builder: (context, state) => const BookingDetailScreen(),
     ),
-    GoRoute(
-      path: '/chat',
-      builder: (context, state) => const ChatScreen(),
-    ),
+    GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
     GoRoute(
       path: '/reviews',
       builder: (context, state) => const ReviewsScreen(),

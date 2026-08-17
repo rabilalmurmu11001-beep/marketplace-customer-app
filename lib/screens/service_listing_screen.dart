@@ -1,50 +1,48 @@
+import 'package:customer_app/network/services/sevicesService.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/brand_theme.dart';
+import '../store/use_app_store.dart';
 
-class DiscoveryService {
-  final String title;
-  final String expert;
-  final String distance;
-  final String rating;
-  final String price;
-  final String quoteType;
-  final String imageUrl;
-  final String badgeText;
-  final Color badgeColor;
-  final Color badgeTextColor;
-  final String category;
-
-  const DiscoveryService({
-    required this.title,
-    required this.expert,
-    required this.distance,
-    required this.rating,
-    required this.price,
-    required this.quoteType,
-    required this.imageUrl,
-    required this.badgeText,
-    required this.badgeColor,
-    required this.badgeTextColor,
-    required this.category,
-  });
-}
-
-class ServiceListingScreen extends StatefulWidget {
+class ServiceListingScreen extends ConsumerStatefulWidget {
   final String initialCategory;
   const ServiceListingScreen({super.key, this.initialCategory = 'All'});
 
   @override
-  State<ServiceListingScreen> createState() => _ServiceListingScreenState();
+  ConsumerState<ServiceListingScreen> createState() =>
+      _ServiceListingScreenState();
 }
 
-class _ServiceListingScreenState extends State<ServiceListingScreen> {
+class _ServiceListingScreenState extends ConsumerState<ServiceListingScreen> {
   late String _selectedCategory;
 
   @override
   void initState() {
     super.initState();
     _selectedCategory = widget.initialCategory;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final services = ref.read(serviceListingServiceProvider);
+
+      if (services == null) {
+        final res = await ref.read(servicesServiceProvider).getAllServices();
+        final data = res.data;
+        List<dynamic>? servicesList;
+        if (data is List) {
+          servicesList = data;
+        } else if (data is Map<String, dynamic> &&
+            data.containsKey('services')) {
+          servicesList = data['services'] as List?;
+        }
+
+        if (servicesList != null) {
+          ref
+              .read(serviceListingServiceProvider.notifier)
+              .setServices(List<Map<String, dynamic>>.from(servicesList));
+        }
+      }
+    });
   }
 
   @override
@@ -55,84 +53,50 @@ class _ServiceListingScreenState extends State<ServiceListingScreen> {
     }
   }
 
-  final List<Map<String, String>> _categories = [
-    {'key': 'All', 'label': 'All Services', 'emoji': '✨'},
-    {'key': 'Cleaning', 'label': 'Cleaning', 'emoji': '🧹'},
-    {'key': 'Sofa', 'label': 'Sofa Care', 'emoji': '🛋️'},
-    {'key': 'AC', 'label': 'AC Service', 'emoji': '❄️'},
-    {'key': 'Electric', 'label': 'Electrician', 'emoji': '⚡'},
-    {'key': 'Plumbing', 'label': 'Plumbing', 'emoji': '🚰'},
-    {'key': 'Painting', 'label': 'Painting', 'emoji': '🎨'},
-    {'key': 'Garden', 'label': 'Garden Care', 'emoji': '🪴'},
-    {'key': 'Pest Control', 'label': 'Pest Control', 'emoji': '🐜'},
-  ];
-
-  final List<DiscoveryService> _services = [
-    DiscoveryService(
-      title: 'Sofa Deep Chemical Wash',
-      expert: 'John Hanson',
-      distance: '2.4 miles away',
-      rating: '★ 4.9 (450 reviews)',
-      price: r'$49.00',
-      quoteType: 'Fixed Quote',
-      imageUrl: 'https://images.unsplash.com/photo-1589405858862-2ac9cbb41321?q=80&w=200&auto=format&fit=crop',
-      badgeText: 'Vetted Super Partner',
-      badgeColor: const Color(0xFFE6F4F2),
-      badgeTextColor: BrandColors.accent,
-      category: 'Sofa',
-    ),
-    DiscoveryService(
-      title: 'Upholstery Sanitization Suite',
-      expert: 'Sophia Rodriguez',
-      distance: '1.1 miles away',
-      rating: '★ 4.8 (320 reviews)',
-      price: r'$85.00',
-      quoteType: 'Fixed Quote',
-      imageUrl: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?q=80&w=200&auto=format&fit=crop',
-      badgeText: 'Elite Expert',
-      badgeColor: const Color(0xFFEFF6FF),
-      badgeTextColor: Colors.blue,
-      category: 'Cleaning',
-    ),
-    DiscoveryService(
-      title: 'AC Deep Jet Wash',
-      expert: 'Alex Rivera',
-      distance: '3.0 miles away',
-      rating: '★ 4.7 (180 reviews)',
-      price: r'$59.00',
-      quoteType: 'Fixed Quote',
-      imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=200&auto=format&fit=crop',
-      badgeText: 'Rapid Responder',
-      badgeColor: const Color(0xFFFEF3C7),
-      badgeTextColor: Colors.amber,
-      category: 'AC',
-    ),
-    DiscoveryService(
-      title: 'Kitchen Premium Sterilization',
-      expert: 'Maya Lin',
-      distance: '1.8 miles away',
-      rating: '★ 4.9 (90 reviews)',
-      price: r'$75.00',
-      quoteType: 'Fixed Quote',
-      imageUrl: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=200&auto=format&fit=crop',
-      badgeText: 'Top Vetted',
-      badgeColor: const Color(0xFFF3E8FF),
-      badgeTextColor: Colors.purple,
-      category: 'Cleaning',
-    ),
-  ];
-
-  List<DiscoveryService> get _filteredServices {
+  List<Map<String, dynamic>> get _filteredServices {
+    final allServices = ref.watch(serviceListingServiceProvider) ?? [];
     if (_selectedCategory == 'All') {
-      return _services;
+      return allServices;
     }
-    return _services.where((s) => s.category == _selectedCategory).toList();
+    return allServices
+        .where((s) => s['category']['id'] == _selectedCategory)
+        .toList();
+  }
+
+  Color _parseColor(dynamic value, Color fallback) {
+    if (value is String && value.isNotEmpty) {
+      var hex = value.replaceAll('#', '').trim();
+      if (hex.length == 6) hex = 'FF$hex';
+      final parsed = int.tryParse(hex, radix: 16);
+      if (parsed != null) return Color(parsed);
+    }
+    if (value is int) return Color(value);
+    return fallback;
+  }
+
+  String _asString(dynamic value, [String fallback = '']) {
+    if (value == null) return fallback;
+    return value.toString();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    final categoriesState = ref.watch(homeCategoriesProvider) ?? [];
+    final List<Map<String, String>> categoriesList = [
+      {'key': 'All', 'label': 'All Services'},
+      ...categoriesState.map((cat) {
+        final name = cat['name'] ?? '';
+        final key = cat['id'] ?? '';
+        return {'key': key, 'label': name};
+      }),
+    ];
+
+    final filteredServices = _filteredServices;
+
+    print("filtered $filteredServices");
 
     return Scaffold(
       appBar: AppBar(
@@ -148,7 +112,7 @@ class _ServiceListingScreenState extends State<ServiceListingScreen> {
             ),
             const SizedBox(height: 2),
             Text(
-              '${_filteredServices.length} Available Near You',
+              '${filteredServices.length} Available Near You',
               style: const TextStyle(
                 fontSize: 11,
                 color: BrandColors.accent,
@@ -162,72 +126,84 @@ class _ServiceListingScreenState extends State<ServiceListingScreen> {
         scrolledUnderElevation: 0,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
-          child: Container(
+          child: SizedBox(
             height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            alignment: Alignment.centerLeft,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: _categories.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final cat = _categories[index];
-                final isSelected = cat['key'] == _selectedCategory;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedCategory = cat['key']!;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? (isDark ? BrandColors.accent.withValues(alpha: 0.12) : const Color(0xFFE6F4F2))
-                          : theme.cardColor,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: categoriesList.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final cat = categoriesList[index];
+                  final isSelected = cat['key'] == _selectedCategory;
+
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () {
+                      setState(() {
+                        _selectedCategory = cat['key']!;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
                         color: isSelected
-                            ? BrandColors.accent.withValues(alpha: 0.3)
-                            : theme.dividerColor,
+                            ? (isDark
+                                  ? BrandColors.accent.withValues(alpha: 0.12)
+                                  : const Color(0xFFE6F4F2))
+                            : theme.cardColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? BrandColors.accent.withValues(alpha: 0.3)
+                              : theme.dividerColor,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            cat['label']!,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected
+                                  ? BrandColors.accent
+                                  : theme.textTheme.bodyMedium?.color,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          cat['emoji']!,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          cat['label']!,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected ? BrandColors.accent : theme.textTheme.bodyMedium?.color,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ),
       ),
-      body: _filteredServices.isEmpty
+      body: filteredServices.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.search_off_outlined, size: 48, color: BrandColors.accent),
+                  const Icon(
+                    Icons.search_off_outlined,
+                    size: 48,
+                    color: BrandColors.accent,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'No Services Available',
-                    style: theme.textTheme.titleLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -240,23 +216,31 @@ class _ServiceListingScreenState extends State<ServiceListingScreen> {
           : ListView.builder(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(16.0),
-              itemCount: _filteredServices.length,
+              itemCount: filteredServices.length,
               itemBuilder: (context, index) {
-                final service = _filteredServices[index];
+                final service = filteredServices[index];
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16.0),
                   child: _buildServiceCard(
                     context: context,
-                    badgeText: service.badgeText,
-                    badgeColor: service.badgeColor,
-                    badgeTextColor: service.badgeTextColor,
-                    title: service.title,
-                    imageUrl: service.imageUrl,
-                    expert: service.expert,
-                    distance: service.distance,
-                    rating: service.rating,
-                    price: service.price,
-                    quoteType: service.quoteType,
+                    serviceId: _asString(service['id']),
+                    badgeText: _asString(service['badgeText']),
+                    badgeColor: _parseColor(
+                      service['badgeColor'],
+                      BrandColors.accent,
+                    ),
+                    badgeTextColor: _parseColor(
+                      service['badgeTextColor'],
+                      Colors.white,
+                    ),
+                    title: _asString(service['name']),
+                    imageUrl: _asString(service['image']),
+                    description: _asString(service['description']),
+                    rating: _asString(
+                      '★ ${service['rating']} (${service['reviewCount']} reviewers)',
+                    ),
+                    price: _asString(service['basePrice']),
+                    quoteType: _asString(service['quoteType']),
                     theme: theme,
                     isDark: isDark,
                   ),
@@ -268,13 +252,13 @@ class _ServiceListingScreenState extends State<ServiceListingScreen> {
 
   Widget _buildServiceCard({
     required BuildContext context,
+    required String serviceId,
     required String badgeText,
     required Color badgeColor,
     required Color badgeTextColor,
     required String title,
     required String imageUrl,
-    required String expert,
-    required String distance,
+    required String description,
     required String rating,
     required String price,
     required String quoteType,
@@ -285,7 +269,7 @@ class _ServiceListingScreenState extends State<ServiceListingScreen> {
     return Opacity(
       opacity: opacity,
       child: InkWell(
-        onTap: () => context.push('/service-detail'),
+        onTap: () => context.push('/service-detail?service_id=$serviceId'),
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -306,44 +290,65 @@ class _ServiceListingScreenState extends State<ServiceListingScreen> {
               // Service Image
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  imageUrl,
-                  width: 70,
-                  height: 70,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      width: 70,
-                      height: 70,
-                      color: isDark ? BrandColors.darkBorder : BrandColors.lightBorder,
-                      child: const Center(
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(BrandColors.accent),
+                child: imageUrl.isEmpty
+                    ? Container(
+                        width: 70,
+                        height: 70,
+                        color: isDark
+                            ? BrandColors.darkBorder
+                            : BrandColors.lightBorder,
+                        child: const Center(
+                          child: Icon(
+                            Icons.image_not_supported_outlined,
+                            size: 20,
+                            color: BrandColors.accent,
                           ),
                         ),
+                      )
+                    : Image.network(
+                        imageUrl,
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            width: 70,
+                            height: 70,
+                            color: isDark
+                                ? BrandColors.darkBorder
+                                : BrandColors.lightBorder,
+                            child: const Center(
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    BrandColors.accent,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 70,
+                            height: 70,
+                            color: isDark
+                                ? BrandColors.darkBorder
+                                : BrandColors.lightBorder,
+                            child: const Center(
+                              child: Icon(
+                                Icons.image_not_supported_outlined,
+                                size: 20,
+                                color: BrandColors.accent,
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 70,
-                      height: 70,
-                      color: isDark ? BrandColors.darkBorder : BrandColors.lightBorder,
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_not_supported_outlined,
-                          size: 20,
-                          color: BrandColors.accent,
-                        ),
-                      ),
-                    );
-                  },
-                ),
               ),
               const SizedBox(width: 14),
 
@@ -352,23 +357,6 @@ class _ServiceListingScreenState extends State<ServiceListingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: badgeColor,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        badgeText.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 8,
-                          fontWeight: FontWeight.w800,
-                          color: badgeTextColor,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
                     Text(
                       title,
                       style: theme.textTheme.titleLarge?.copyWith(
@@ -380,10 +368,8 @@ class _ServiceListingScreenState extends State<ServiceListingScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Expert: $expert • $distance',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontSize: 11,
-                      ),
+                      description,
+                      style: theme.textTheme.bodyMedium?.copyWith(fontSize: 11),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -407,7 +393,7 @@ class _ServiceListingScreenState extends State<ServiceListingScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    price,
+                    '₹ $price',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
