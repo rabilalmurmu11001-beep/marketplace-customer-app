@@ -388,7 +388,13 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
                               ),
                             ),
                             TextButton(
-                              onPressed: () => context.push('/reviews'),
+                              onPressed: () => context.push(
+                                '/reviews?service_id=${widget.serviceId}&service_title=${Uri.encodeComponent(title)}',
+                                extra: {
+                                  'serviceId': widget.serviceId,
+                                  'serviceTitle': title,
+                                },
+                              ),
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
                                 minimumSize: Size.zero,

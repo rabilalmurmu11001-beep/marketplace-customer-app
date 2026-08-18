@@ -81,12 +81,31 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/booking-detail',
-      builder: (context, state) => const BookingDetailScreen(),
+      builder: (context, state) {
+        final booking = state.extra as Map<String, dynamic>?;
+        final bookingId = state.uri.queryParameters['booking_id'] ??
+            booking?['booking']?['id']?.toString() ??
+            booking?['id']?.toString();
+        return BookingDetailScreen(
+          booking: booking,
+          bookingId: bookingId,
+        );
+      },
     ),
     GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
     GoRoute(
       path: '/reviews',
-      builder: (context, state) => const ReviewsScreen(),
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final serviceId = state.uri.queryParameters['service_id'] ??
+            extra?['serviceId']?.toString();
+        final serviceTitle = state.uri.queryParameters['service_title'] ??
+            extra?['serviceTitle']?.toString();
+        return ReviewsScreen(
+          serviceId: serviceId,
+          serviceTitle: serviceTitle,
+        );
+      },
     ),
     GoRoute(
       path: '/addresses',

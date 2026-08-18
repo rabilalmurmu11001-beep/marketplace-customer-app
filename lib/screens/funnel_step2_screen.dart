@@ -1,8 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:customer_app/network/services/sevicesService.dart';
+import 'package:customer_app/store/use_app_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../state/app_state.dart';
 import '../theme/brand_theme.dart';
 
 class FunnelStep2Screen extends ConsumerStatefulWidget {
@@ -36,34 +37,91 @@ class _FunnelStep2ScreenState extends ConsumerState<FunnelStep2Screen> {
   }
 
   Future<void> bookService() async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
+      final scheduleDate = widget.bookingSummery?['scheduleDate'];
+      final String dateParam = scheduleDate is DateTime
+          ? scheduleDate.toIso8601String()
+          : (scheduleDate?.toString() ?? DateTime.now().toIso8601String());
+
       final res = await ref.read(servicesServiceProvider).bookService({
         "addresId": widget.bookingSummery?['addressId'],
-        "date": widget.bookingSummery?['scheduleDate'],
+        "date": dateParam,
         "serviceId": widget.bookingSummery?['service']?['id'],
         "timeSlot": widget.bookingSummery?['timeSlot'],
         "notes": widget.bookingSummery?['description'],
+        if (widget.bookingSummery?['couponCode'] != null)
+          "couponCode": widget.bookingSummery?['couponCode'],
       });
 
       if (res.statusCode == 201) {
-        // Show success dialog or snackbar
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return;
+
+        // Refresh bookings in background
+        try {
+          final bookingsRes =
+              await ref.read(servicesServiceProvider).getAllBookings();
+          if (bookingsRes.statusCode == 200 &&
+              bookingsRes.data is Map<String, dynamic>) {
+            final list = bookingsRes.data['bookings'] as List?;
+            if (list != null) {
+              ref
+                  .read(customerBookingsProvider.notifier)
+                  .setBookings(List<Map<String, dynamic>>.from(list));
+            }
+          }
+        } catch (_) {}
+
+        messenger.showSnackBar(
           const SnackBar(
-            content: Text('🎉 Booking Manifest Dispatched Successfully!'),
+            content: Text('🎉 Booking Dispatched Successfully!'),
             backgroundColor: BrandColors.accent,
             behavior: SnackBarBehavior.floating,
             duration: Duration(seconds: 2),
           ),
         );
 
-        Future.delayed(const Duration(milliseconds: 1500), () {
+        Future.delayed(const Duration(milliseconds: 1200), () {
           if (mounted) {
-            context.go('/home');
+            context.go('/bookings');
           }
         });
       }
+    } on DioException catch (dioErr) {
+      final String errMessage = (dioErr.response?.data is Map &&
+              dioErr.response?.data['message'] != null)
+          ? dioErr.response!.data['message'].toString()
+          : 'Failed to dispatch booking. Please try again.';
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(errMessage),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      if (mounted) {
+        setState(() {
+          _isBooked = false;
+          _swipeProgress = 0.0;
+        });
+      }
     } catch (err) {
-      print('Error while booking service: $err');
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Error: $err'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      if (mounted) {
+        setState(() {
+          _isBooked = false;
+          _swipeProgress = 0.0;
+        });
+      }
     }
   }
 
@@ -84,8 +142,23 @@ class _FunnelStep2ScreenState extends ConsumerState<FunnelStep2Screen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final appState = AppState();
-    final address = appState.activeAddress;
+    final customerAddresses = ref.watch(customerAddressProvider) ?? [];
+    final targetAddressId = widget.bookingSummery?['addressId']?.toString();
+
+    final selectedAddress = customerAddresses.firstWhere(
+      (a) => a['id'].toString() == targetAddressId,
+      orElse: () => customerAddresses.isNotEmpty ? customerAddresses.first : <String, dynamic>{},
+    );
+
+    final addressHouse = selectedAddress['house_number']?.toString();
+    final addressStreet = selectedAddress['street_no_or_name']?.toString();
+    final addressCity = selectedAddress['city']?.toString();
+
+    final addressDisplay = [
+      if (addressHouse != null && addressHouse.isNotEmpty) addressHouse,
+      if (addressStreet != null && addressStreet.isNotEmpty) addressStreet,
+      if (addressCity != null && addressCity.isNotEmpty) addressCity,
+    ].join(', ');
 
     return Scaffold(
       appBar: AppBar(
@@ -215,7 +288,7 @@ class _FunnelStep2ScreenState extends ConsumerState<FunnelStep2Screen> {
                           const SizedBox(height: 10),
                           _buildSummaryRow(
                             'Address Target:',
-                            address.street,
+                            addressDisplay.isNotEmpty ? addressDisplay : 'Address Selected',
                             theme,
                             valueColor: theme.textTheme.bodyLarge?.color,
                           ),

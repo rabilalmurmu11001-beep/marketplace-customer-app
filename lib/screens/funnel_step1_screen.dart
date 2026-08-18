@@ -44,13 +44,29 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
   }
 
   void handleViewBookingSummery() {
+    final customerAddresses = ref.read(customerAddressProvider) ?? [];
+    if (customerAddresses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add a delivery address first.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      context.push('/addresses');
+      return;
+    }
+
+    final effectiveAddressId = chosenAddressId.isNotEmpty
+        ? chosenAddressId
+        : customerAddresses.first['id'].toString();
+
     context.push(
       '/funnel-step2',
       extra: {
         'service': widget.service,
-        'addressId': chosenAddressId,
+        'addressId': effectiveAddressId,
         'scheduleDate': scheduleDate,
-        'timeSlot': chosenTimeSlot,
+        'timeSlot': chosenTimeSlot.isNotEmpty ? chosenTimeSlot : '02:00 PM',
         'description': _descriptionController.text,
       },
     );
@@ -95,6 +111,11 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
       body: Builder(
         builder: (context) {
           final customerAddresses = ref.watch(customerAddressProvider) ?? [];
+          final validAddressIds =
+              customerAddresses.map((a) => a['id'].toString()).toList();
+          final effectiveAddressId = validAddressIds.contains(chosenAddressId)
+              ? chosenAddressId
+              : (validAddressIds.isNotEmpty ? validAddressIds.first : null);
 
           return Column(
             children: [
@@ -106,71 +127,150 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Address coordinates anchor selector
-                      const Text(
-                        'SERVICE COORDINATES',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.cardColor,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: theme.dividerColor),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.location_on_outlined,
-                              size: 18,
-                              color: BrandColors.accent,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'SERVICE COORDINATES',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.0,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: chosenAddressId,
-                                  isExpanded: true,
-                                  dropdownColor: theme.cardColor,
-                                  icon: Icon(
-                                    Icons.arrow_drop_down,
-                                    color: theme.textTheme.bodyMedium?.color,
-                                  ),
-                                  items: customerAddresses.map((addr) {
-                                    return DropdownMenuItem<String>(
-                                      value: addr['id'],
-                                      child: Text(
-                                        '${addr['house_number']}, ${addr['street_no_or_name']}, ${addr['city']}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) {
-                                    if (val != null) {
-                                      setState(() {
-                                        chosenAddressId = val;
-                                      });
-                                    }
-                                  },
-                                ),
+                          ),
+                          GestureDetector(
+                            onTap: () => context.push('/addresses'),
+                            child: const Text(
+                              'Manage Addresses',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: BrandColors.accent,
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 8),
+                      if (customerAddresses.isEmpty)
+                        GestureDetector(
+                          onTap: () => context.push('/addresses'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: BrandColors.accent.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.add_location_alt_outlined,
+                                  size: 20,
+                                  color: BrandColors.accent,
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Add delivery address to continue',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: BrandColors.accent,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 14,
+                                  color: BrandColors.accent,
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: theme.dividerColor),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_outlined,
+                                size: 18,
+                                color: BrandColors.accent,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: effectiveAddressId,
+                                    isExpanded: true,
+                                    dropdownColor: theme.cardColor,
+                                    icon: Icon(
+                                      Icons.arrow_drop_down,
+                                      color: theme.textTheme.bodyMedium?.color,
+                                    ),
+                                    items: customerAddresses.map((addr) {
+                                      final id = addr['id'].toString();
+                                      final title = addr['title']?.toString();
+                                      final house =
+                                          addr['house_number']?.toString();
+                                      final street =
+                                          addr['street_no_or_name']?.toString();
+                                      final city = addr['city']?.toString() ?? '';
+
+                                      final addrText = [
+                                        if (house != null && house.isNotEmpty)
+                                          house,
+                                        if (street != null && street.isNotEmpty)
+                                          street,
+                                        if (city.isNotEmpty) city,
+                                      ].join(', ');
+
+                                      return DropdownMenuItem<String>(
+                                        value: id,
+                                        child: Text(
+                                          title != null && title.isNotEmpty
+                                              ? '[$title] $addrText'
+                                              : addrText,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() {
+                                          chosenAddressId = val;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       const SizedBox(height: 6),
                       Text(
-                        'Select from your configured ledger repositories above.',
+                        'Select from your configured address coordinates.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontSize: 9,
                         ),

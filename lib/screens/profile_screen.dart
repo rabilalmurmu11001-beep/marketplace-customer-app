@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../security/secureStorage.dart';
+import '../store/use_app_store.dart';
 import '../state/app_state.dart';
 import '../theme/brand_theme.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final customerProfile = ref.watch(customerProfileProvider);
+    final customerAddresses = ref.watch(customerAddressProvider);
+
+    final username = customerProfile?['username']?.toString() ?? 'User Profile';
+    final initials = username.isNotEmpty
+        ? username.trim().split(' ').map((s) => s.isNotEmpty ? s[0] : '').take(2).join().toUpperCase()
+        : 'EW';
 
     return Scaffold(
       appBar: AppBar(
@@ -35,7 +45,7 @@ class ProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 10),
-                // EW Avatar
+                // Avatar
                 Container(
                   width: 72,
                   height: 72,
@@ -50,10 +60,10 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
-                      'EW',
-                      style: TextStyle(
+                      initials.isNotEmpty ? initials : 'U',
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: BrandColors.accent,
@@ -64,7 +74,7 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 // User Details
                 Text(
-                  'Emma Watson',
+                  username,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -137,7 +147,7 @@ class ProfileScreen extends StatelessWidget {
                       _buildProfileOption(
                         leadingIcon: Icons.location_on_outlined,
                         title: 'Managed Delivery Coordinates',
-                        trailingText: '${appState.customerAddresses.length} saved',
+                        trailingText: '${customerAddresses?.length ?? 0} saved',
                         theme: theme,
                         onTap: () => context.push('/addresses'),
                       ),
@@ -167,8 +177,11 @@ class ProfileScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () {
-                      context.go('/login');
+                    onPressed: () async {
+                      await TokenRepository().deleteToken();
+                      if (context.mounted) {
+                        context.go('/login');
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,

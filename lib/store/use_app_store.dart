@@ -56,6 +56,15 @@ class CustomerAddressNotifier extends Notifier<List<Map<String, dynamic>>?> {
   }
 }
 
+class CustomerBookingsNotifier extends Notifier<List<Map<String, dynamic>>?> {
+  @override
+  List<Map<String, dynamic>>? build() => null;
+
+  void setBookings(List<Map<String, dynamic>>? bookings) {
+    state = bookings;
+  }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //////////// Riverpod Providers  /////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -90,4 +99,9 @@ final serviceListingServiceProvider =
 final customerAddressProvider =
     NotifierProvider<CustomerAddressNotifier, List<Map<String, dynamic>>?>(
       CustomerAddressNotifier.new,
+    );
+
+final customerBookingsProvider =
+    NotifierProvider<CustomerBookingsNotifier, List<Map<String, dynamic>>?>(
+      CustomerBookingsNotifier.new,
     );

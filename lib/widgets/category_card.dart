@@ -11,7 +11,8 @@ class CategoryCard extends StatelessWidget {
     super.key,
     required this.icon,
     required this.label,
-    this.onTap, required title,
+    this.onTap,
+    String? title,
   });
 
   @override
@@ -20,11 +21,12 @@ class CategoryCard extends StatelessWidget {
 
     return InkWell(
       onTap: onTap ?? () => context.go('/search'),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
         decoration: BoxDecoration(
           color: theme.cardColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: theme.dividerColor),
         ),
         child: Column(
@@ -32,16 +34,22 @@ class CategoryCard extends StatelessWidget {
           children: [
             Icon(
               icon,
-              size: 24,
+              size: 22,
               color: BrandColors.accent,
             ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: theme.textTheme.bodyLarge?.color,
+            const SizedBox(height: 5),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: theme.textTheme.bodyLarge?.color,
+                ),
               ),
             ),
           ],
