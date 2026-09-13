@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../network/services/socketService.dart';
 import '../security/secureStorage.dart';
 import '../theme/brand_theme.dart';
 
@@ -44,6 +45,7 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       final token = await TokenRepository().readToken();
       if (token != null && token.isNotEmpty) {
+        SocketService.instance.connect(token);
         if (mounted) context.go('/home');
       } else {
         if (mounted) context.go('/onboarding');

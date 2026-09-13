@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../network/services/authServices.dart';
+import '../network/services/socketService.dart';
 import '../theme/brand_theme.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -52,7 +53,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
     try {
       final authService = ref.read(authServiceProvider);
-      await authService.signup(name, password, email, phone);
+      final res = await authService.signup(name, password, email, phone);
+
+      String? token;
+      if (res.data is Map<String, dynamic>) {
+        token = res.data['token'];
+      }
+      await ref.read(socketServiceProvider).connect(token);
 
       if (mounted) {
         setState(() {

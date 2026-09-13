@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../network/services/authServices.dart';
+import '../network/services/socketService.dart';
 import '../theme/brand_theme.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -153,15 +154,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final authService = ref.read(authServiceProvider);
+      Response<dynamic>? res;
       if (_isPassword) {
         if (_isEmail) {
-          await authService.emaillogin(identifier, secret);
+          res = await authService.emaillogin(identifier, secret);
         } else {
-          await authService.phonelogin(identifier, secret);
+          res = await authService.phonelogin(identifier, secret);
         }
       } else {
-        await authService.verifyOtp(identifireToken, secret);
+        res = await authService.verifyOtp(identifireToken, secret);
       }
+
+      // Extract token if available and connect to socket
+      String? token;
+      if (res.data is Map<String, dynamic>) {
+        token = res.data['token'];
+      }
+      await ref.read(socketServiceProvider).connect(token);
 
       if (mounted) {
         setState(() {

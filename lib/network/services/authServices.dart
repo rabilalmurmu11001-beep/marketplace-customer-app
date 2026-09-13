@@ -1,4 +1,5 @@
 import 'package:customer_app/network/api.dart';
+import 'package:customer_app/network/services/socketService.dart';
 import 'package:customer_app/security/secureStorage.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -109,6 +110,7 @@ class AuthService {
       final tokenRepository = TokenRepository();
 
       await tokenRepository.deleteToken();
+      SocketService.instance.disconnect();
       return true;
     } catch (err) {
       return false;

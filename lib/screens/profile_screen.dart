@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../network/services/socketService.dart';
 import '../security/secureStorage.dart';
 import '../store/use_app_store.dart';
 import '../state/app_state.dart';
@@ -179,6 +180,7 @@ class ProfileScreen extends ConsumerWidget {
                   child: ElevatedButton(
                     onPressed: () async {
                       await TokenRepository().deleteToken();
+                      ref.read(socketServiceProvider).disconnect();
                       if (context.mounted) {
                         context.go('/login');
                       }

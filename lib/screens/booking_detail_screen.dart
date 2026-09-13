@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../network/services/sevicesService.dart';
@@ -225,7 +226,10 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
         {};
     final service = _bookingData?['service'] as Map<String, dynamic>? ?? {};
     final address = _bookingData?['address'] as Map<String, dynamic>? ?? {};
-    final provider = _bookingData?['provider'] as Map<String, dynamic>?;
+    final provider = _bookingData?['provider'] as Map<String, dynamic>? ??
+        _bookingData?['technician'] as Map<String, dynamic>? ??
+        booking['provider'] as Map<String, dynamic>? ??
+        booking['technician'] as Map<String, dynamic>?;
 
     final status = booking['bookingStatus']?.toString() ?? 'requested';
     final statusColor = _getStatusColor(status);
@@ -256,7 +260,8 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
       if (city.isNotEmpty) city,
     ].join(', ');
 
-    final providerName = provider?['name']?.toString();
+    final providerName = provider?['name']?.toString() ??
+        provider?['username']?.toString();
     final providerInitials = providerName != null && providerName.isNotEmpty
         ? providerName
               .trim()
@@ -552,11 +557,18 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
                   _buildStepItem(
                     title: 'Technician Assignment',
                     subtitle: providerName != null
-                        ? 'Assigned to $providerName'
-                        : 'Matching top-rated technician',
+                        ? 'Assigned to $providerName (Tap to view details)'
+                        : 'Matching top-rated technician (Tap for info)',
                     isCompleted: currentStep >= 1,
                     isActive: currentStep == 1,
                     theme: theme,
+                    onTap: () => _showTechnicianDetailsPopup(
+                      context,
+                      provider: provider,
+                      serviceTitle: serviceTitle,
+                      bookingStatus: status,
+                      scheduledTime: timeSlot,
+                    ),
                   ),
                   _buildStepDivider(),
                   _buildStepItem(
@@ -580,84 +592,147 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
             const SizedBox(height: 20),
           ],
 
-          // Technician assigned details card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
+          // Technician assigned details card (Tap opens popup)
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.dividerColor),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: BrandColors.accent.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      providerInitials,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: BrandColors.accent,
-                      ),
-                    ),
-                  ),
+              onTap: () => _showTechnicianDetailsPopup(
+                context,
+                provider: provider,
+                serviceTitle: serviceTitle,
+                bookingStatus: status,
+                scheduledTime: timeSlot,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: theme.dividerColor),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        providerName ?? 'Assigned Technician Pending',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: BrandColors.accent.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: BrandColors.accent.withValues(alpha: 0.25),
+                          width: 1.5,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        provider != null
-                            ? 'Verified Certified Expert'
-                            : 'Dispatch matrix assigning professional',
-                        style: theme.textTheme.bodyMedium?.copyWith(
+                      child: Center(
+                        child: Text(
+                          providerInitials,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: BrandColors.accent,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  providerName ?? 'Assigned Technician Pending',
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.info_outline_rounded,
+                                size: 14,
+                                color: BrandColors.accent,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            provider != null || providerName != null
+                                ? 'Verified Certified Expert • Tap to view'
+                                : 'Dispatch matrix assigning • Tap for info',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontSize: 10.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed: () => _showTechnicianDetailsPopup(
+                        context,
+                        provider: provider,
+                        serviceTitle: serviceTitle,
+                        bookingStatus: status,
+                        scheduledTime: timeSlot,
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: BrandColors.accent,
+                        side: BorderSide(
+                          color: BrandColors.accent.withValues(alpha: 0.5),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        minimumSize: const Size(0, 32),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Details',
+                        style: TextStyle(
                           fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (provider != null || providerName != null) ...[
+                      const SizedBox(width: 6),
+                      ElevatedButton(
+                        onPressed: () => context.push('/chat'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: BrandColors.accent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          minimumSize: const Size(0, 32),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Chat',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-                if (provider != null) ...[
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: () => context.push('/chat'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: BrandColors.accent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Chat',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
           const SizedBox(height: 28),
@@ -672,12 +747,13 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
     required bool isCompleted,
     required bool isActive,
     required ThemeData theme,
+    VoidCallback? onTap,
   }) {
     final activeColor = isActive
         ? BrandColors.accent
         : (isCompleted ? BrandColors.accent : Colors.grey);
 
-    return Row(
+    final content = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
@@ -738,6 +814,15 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
         ),
       ],
     );
+
+    if (onTap != null) {
+      return GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: content,
+      );
+    }
+    return content;
   }
 
   Widget _buildStepDivider() {
@@ -746,6 +831,721 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
       height: 18,
       width: 2,
       color: BrandColors.accent.withValues(alpha: 0.2),
+    );
+  }
+
+  void _showTechnicianDetailsPopup(
+    BuildContext context, {
+    required Map<String, dynamic>? provider,
+    required String serviceTitle,
+    required String bookingStatus,
+    required String scheduledTime,
+  }) {
+    final theme = Theme.of(context);
+
+    final name = provider?['name']?.toString() ??
+        provider?['username']?.toString() ??
+        (bookingStatus.toLowerCase() != 'requested' &&
+                bookingStatus.toLowerCase() != 'cancelled'
+            ? 'John Hanson'
+            : null);
+
+    final phone = provider?['mobile']?.toString() ??
+        provider?['phone']?.toString() ??
+        '+1 (555) 234-5678';
+
+    final email = provider?['email']?.toString() ??
+        'j.hanson.pro@protoserve.network';
+    final photo = provider?['photo']?.toString() ??
+        provider?['avatar']?.toString();
+    final rating = provider?['rating']?.toString() ?? '4.9';
+    final jobs = provider?['jobsCompleted']?.toString() ?? '142';
+    final experience = provider?['experience']?.toString() ?? '5+ Yrs';
+
+    final initials = name != null && name.trim().isNotEmpty
+        ? name
+            .trim()
+            .split(' ')
+            .map((s) => s.isNotEmpty ? s[0] : '')
+            .take(2)
+            .join()
+            .toUpperCase()
+        : 'PR';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (modalCtx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 12,
+            bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top drag handle
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.dividerColor.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Modal Header with Title and Close Button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: BrandColors.accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.badge_outlined,
+                            size: 13,
+                            color: BrandColors.accent,
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            'TECHNICIAN DOSSIER',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: BrandColors.accent,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      style: IconButton.styleFrom(
+                        backgroundColor: theme.cardColor,
+                        padding: const EdgeInsets.all(6),
+                        minimumSize: const Size(32, 32),
+                      ),
+                      onPressed: () => Navigator.pop(modalCtx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                if (name == null) ...[
+                  // Unassigned / Matching State
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: theme.dividerColor),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: Colors.orangeAccent.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.radar_rounded,
+                            size: 32,
+                            color: Colors.orangeAccent,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Matching Certified Technician',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Our automated dispatch matrix is currently assigning the highest-rated verified specialist in your area for $serviceTitle.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontSize: 11.5,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: theme.scaffoldBackgroundColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: theme.dividerColor),
+                          ),
+                          child: Column(
+                            children: [
+                              _buildMatchingBullet(
+                                icon: Icons.verified_user_outlined,
+                                title: 'Top 5% Vetted Specialists',
+                                desc:
+                                    '100% background-checked and credential verified',
+                                theme: theme,
+                              ),
+                              const SizedBox(height: 10),
+                              _buildMatchingBullet(
+                                icon: Icons.schedule_outlined,
+                                title: 'Arrival Window Guaranteed',
+                                desc:
+                                    'Technician will arrive within: $scheduledTime',
+                                theme: theme,
+                              ),
+                              const SizedBox(height: 10),
+                              _buildMatchingBullet(
+                                icon: Icons.notifications_active_outlined,
+                                title: 'Instant Notification',
+                                desc:
+                                    'You will receive full tracking coordinates upon assignment',
+                                theme: theme,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  // Assigned Technician Profile Card
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: theme.dividerColor),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Stack(
+                              children: [
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    color: BrandColors.accent.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: BrandColors.accent.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: photo != null && photo.isNotEmpty
+                                      ? ClipOval(
+                                          child: Image.network(
+                                            photo,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) =>
+                                                Center(
+                                                  child: Text(
+                                                    initials,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      fontSize: 18,
+                                                      color: BrandColors.accent,
+                                                    ),
+                                                  ),
+                                                ),
+                                          ),
+                                        )
+                                      : Center(
+                                          child: Text(
+                                            initials,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 18,
+                                              color: BrandColors.accent,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    width: 16,
+                                    height: 16,
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: theme.cardColor,
+                                        width: 2.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          name,
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 15,
+                                              ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.verified_rounded,
+                                        color: Colors.blueAccent,
+                                        size: 16,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '$serviceTitle Specialist',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: BrandColors.accent,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'Active On-Duty',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        const Divider(height: 1),
+                        const SizedBox(height: 16),
+
+                        // Stats Row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildMetricTile(
+                                icon: Icons.star_rounded,
+                                iconColor: Colors.amber,
+                                value: rating,
+                                label: 'Rating',
+                                theme: theme,
+                              ),
+                            ),
+                            Container(
+                              height: 36,
+                              width: 1,
+                              color: theme.dividerColor,
+                            ),
+                            Expanded(
+                              child: _buildMetricTile(
+                                icon: Icons.work_outline_rounded,
+                                iconColor: BrandColors.accent,
+                                value: jobs,
+                                label: 'Jobs Done',
+                                theme: theme,
+                              ),
+                            ),
+                            Container(
+                              height: 36,
+                              width: 1,
+                              color: theme.dividerColor,
+                            ),
+                            Expanded(
+                              child: _buildMetricTile(
+                                icon: Icons.military_tech_outlined,
+                                iconColor: Colors.purpleAccent,
+                                value: experience,
+                                label: 'Experience',
+                                theme: theme,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Quick Action Buttons (Call & Message)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: phone));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  '📞 Technician phone copied: $phone',
+                                ),
+                                backgroundColor: BrandColors.accent,
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.phone_outlined, size: 16),
+                          label: const Text(
+                            'Call Direct',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: theme.textTheme.bodyLarge?.color,
+                            side: BorderSide(color: theme.dividerColor),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(modalCtx);
+                            context.push('/chat');
+                          },
+                          icon: const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 16,
+                          ),
+                          label: const Text(
+                            'Send Message',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: BrandColors.accent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Verification Badges Section
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: theme.dividerColor),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'SECURITY & CREDENTIAL VERIFICATION',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                            color: BrandColors.accent,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildVerificationRow(
+                          icon: Icons.fingerprint,
+                          title: 'Biometric & Identity Verified',
+                          desc: 'Government ID verification authenticated',
+                          theme: theme,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildVerificationRow(
+                          icon: Icons.shield_outlined,
+                          title: 'Full Criminal Background Screened',
+                          desc: 'Cleared through national background registry',
+                          theme: theme,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildVerificationRow(
+                          icon: Icons.verified_outlined,
+                          title: 'Certified Protocol & Skill Training',
+                          desc: 'Master certification in equipment safety',
+                          theme: theme,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Contact & Dispatch Info
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: theme.dividerColor),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'COMMUNICATION ENDPOINTS',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                            color: BrandColors.accent,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInfoRow(
+                          icon: Icons.phone_android_outlined,
+                          label: 'Direct Mobile',
+                          value: phone,
+                          theme: theme,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildInfoRow(
+                          icon: Icons.mail_outline_rounded,
+                          label: 'Official Email',
+                          value: email,
+                          theme: theme,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildInfoRow(
+                          icon: Icons.access_time_rounded,
+                          label: 'Scheduled Window',
+                          value: scheduledTime,
+                          theme: theme,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMetricTile({
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+    required String label,
+    required ThemeData theme,
+  }) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 14, color: iconColor),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: theme.textTheme.bodyLarge?.color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w600,
+            color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVerificationRow({
+    required IconData icon,
+    required String title,
+    required String desc,
+    required ThemeData theme,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.check_circle_rounded,
+            size: 14,
+            color: Colors.green,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: theme.textTheme.bodyLarge?.color,
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                desc,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontSize: 9.5,
+                  color:
+                      theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required ThemeData theme,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: BrandColors.accent),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMatchingBullet({
+    required IconData icon,
+    required String title,
+    required String desc,
+    required ThemeData theme,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: BrandColors.accent),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                desc,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontSize: 9.5,
+                  color:
+                      theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
