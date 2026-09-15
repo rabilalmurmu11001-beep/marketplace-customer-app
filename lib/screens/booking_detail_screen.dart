@@ -707,7 +707,16 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
                     if (provider != null || providerName != null) ...[
                       const SizedBox(width: 6),
                       ElevatedButton(
-                        onPressed: () => context.push('/chat'),
+                        onPressed: () => context.push(
+                          '/chat',
+                          extra: {
+                            'roomId': bookingId,
+                            'recipientName': providerName ?? 'Service Provider',
+                            'recipientPhoto': provider?['photo']?.toString() ??
+                                provider?['avatar']?.toString(),
+                            'recipientId': provider?['id']?.toString(),
+                          },
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: BrandColors.accent,
                           foregroundColor: Colors.white,
@@ -1265,7 +1274,18 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
                         child: ElevatedButton.icon(
                           onPressed: () {
                             Navigator.pop(modalCtx);
-                            context.push('/chat');
+                            final bId = widget.bookingId ??
+                                _bookingData?['id']?.toString() ??
+                                '';
+                            context.push(
+                              '/chat',
+                              extra: {
+                                'roomId': bId,
+                                'recipientName': name,
+                                'recipientPhoto': photo,
+                                'recipientId': provider?['id']?.toString(),
+                              },
+                            );
                           },
                           icon: const Icon(
                             Icons.chat_bubble_outline_rounded,

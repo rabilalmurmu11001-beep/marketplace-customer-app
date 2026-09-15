@@ -19,6 +19,10 @@ class SocketService {
 
   bool get isConnected => _socket?.connected ?? false;
 
+  String? _activeRoomId;
+
+  String? get activeRoomId => _activeRoomId;
+
   Future<void> connect([String? token]) async {
     final authToken = token ?? await TokenRepository().readToken();
 
@@ -53,6 +57,11 @@ class SocketService {
 
       _socket!.onConnect((_) {
         debugPrint('[SocketService] Connected successfully. Socket ID: ${_socket?.id}');
+        // Re-join active room on reconnection if previously joined
+        if (_activeRoomId != null) {
+          debugPrint('[SocketService] Rejoining active room: $_activeRoomId');
+          _socket!.emit('joinRoom', _activeRoomId);
+        }
       });
 
       _socket!.onConnectError((err) {
@@ -73,9 +82,71 @@ class SocketService {
     }
   }
 
+  void joinRoom(String roomId) {
+    _activeRoomId = roomId;
+    if (_socket != null && _socket!.connected) {
+      debugPrint('[SocketService] Joining room: $roomId');
+      _socket!.emit('joinRoom', roomId);
+    } else {
+      debugPrint('[SocketService] Socket not connected yet; room $roomId queued.');
+    }
+  }
+
+  void leaveRoom(String roomId) {
+    if (_activeRoomId == roomId) {
+      _activeRoomId = null;
+    }
+    if (_socket != null && _socket!.connected) {
+      debugPrint('[SocketService] Leaving room: $roomId');
+      _socket!.emit('leaveRoom', roomId);
+    }
+  }
+
+  void sendMessageToRoom({
+    required String roomId,
+    required String message,
+    String messageType = 'text',
+  }) {
+    if (_socket != null && _socket!.connected) {
+      debugPrint('[SocketService] Emitting sendMessageToRoom -> $roomId: $message');
+      _socket!.emit('sendMessageToRoom', {
+        'room': roomId,
+        'message': message,
+        'messageType': messageType,
+      });
+    } else {
+      debugPrint('[SocketService] Socket not connected, could not emit message.');
+    }
+  }
+
+  void onMessage(void Function(dynamic data) handler) {
+    _socket?.on('message', handler);
+  }
+
+  void offMessage([void Function(dynamic data)? handler]) {
+    if (handler != null) {
+      _socket?.off('message', handler);
+    } else {
+      _socket?.off('message');
+    }
+  }
+
+  void onMessagesRead(void Function(dynamic data) handler) {
+    _socket?.on('messagesRead', handler);
+  }
+
+  void offMessagesRead([void Function(dynamic data)? handler]) {
+    if (handler != null) {
+      _socket?.off('messagesRead', handler);
+    } else {
+      _socket?.off('messagesRead');
+    }
+  }
+
   void disconnect() {
     if (_socket != null) {
       debugPrint('[SocketService] Disconnecting socket...');
+      _activeRoomId = null;
       _socket!.disconnect();
       _socket!.dispose();
       _socket = null;

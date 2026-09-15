@@ -1,11 +1,14 @@
+import 'dart:io';
 import 'package:customer_app/security/secureStorage.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:customer_app/routing/app_router.dart';
 
-// final String host = 'http://13.51.197.245:7000/';
+// final String host = 'https://13.51.197.245:7000/';
 // final String host = 'http://10.11.73.96:7000';
 final String host = 'https://192.168.31.13:7000';
+// final String host = 'https://10.166.62.96:7000';
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
@@ -18,6 +21,15 @@ final dioProvider = Provider<Dio>((ref) {
         'Accept': 'application/json',
       },
     ),
+  );
+
+  dio.httpClientAdapter = IOHttpClientAdapter(
+    createHttpClient: () {
+      final client = HttpClient();
+      client.badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+      return client;
+    },
   );
 
   final tokenRepository = TokenRepository();

@@ -92,7 +92,27 @@ final GoRouter appRouter = GoRouter(
         );
       },
     ),
-    GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
+    GoRoute(
+      path: '/chat',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final roomId = state.uri.queryParameters['roomId'] ??
+            extra?['roomId']?.toString() ??
+            '';
+        final recipientName = state.uri.queryParameters['recipientName'] ??
+            extra?['recipientName']?.toString();
+        final recipientPhoto = state.uri.queryParameters['recipientPhoto'] ??
+            extra?['recipientPhoto']?.toString();
+        final recipientId = state.uri.queryParameters['recipientId'] ??
+            extra?['recipientId']?.toString();
+        return ChatScreen(
+          roomId: roomId,
+          recipientName: recipientName,
+          recipientPhoto: recipientPhoto,
+          recipientId: recipientId,
+        );
+      },
+    ),
     GoRoute(
       path: '/reviews',
       builder: (context, state) {

@@ -39,6 +39,7 @@ dependencies:
   dio: ^5.10.0
   flutter_secure_storage: ^10.3.1
   socket_io_client: ^3.1.6
+  firebase_core: ^4.14.0
 
 dev_dependencies:
   flutter_test:
