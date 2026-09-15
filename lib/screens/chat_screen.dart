@@ -65,8 +65,9 @@ class ChatMessage {
       parsedDate = DateTime.now();
     }
 
-    final sender = json['sender'] is Map<String, dynamic>
-        ? json['sender'] as Map<String, dynamic>
+    final senderRaw = json['sender'];
+    final Map<String, dynamic>? sender = senderRaw is Map
+        ? Map<String, dynamic>.from(senderRaw)
         : null;
 
     return ChatMessage(
@@ -79,7 +80,8 @@ class ChatMessage {
       createdAt: parsedDate,
       senderName:
           sender?['username']?.toString() ?? sender?['name']?.toString(),
-      senderPhoto: sender?['photo']?.toString(),
+      senderPhoto:
+          sender?['photo']?.toString() ?? sender?['avatar']?.toString(),
     );
   }
 }
@@ -153,8 +155,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // 3. Try fetching from user profile endpoint
     try {
       final res = await ref.read(userServiceProvider).getUserProfile();
-      if (res.data is Map<String, dynamic> && res.data['user'] != null) {
-        final user = res.data['user'];
+      if (res.data is Map && res.data['user'] != null) {
+        final user = Map<String, dynamic>.from(res.data['user'] as Map);
         _currentUserId = user['id']?.toString();
         ref.read(customerProfileProvider.notifier).setProfile(user);
       }
@@ -173,10 +175,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         limit: 100,
       );
 
-      if (res.data is Map<String, dynamic>) {
-        final rawList = res.data['messages'] as List? ?? [];
+      if (res.data is Map && res.data['messages'] is List) {
+        final rawList = res.data['messages'] as List;
         final parsed = rawList
-            .map((item) => ChatMessage.fromJson(item as Map<String, dynamic>))
+            .map((item) => ChatMessage.fromJson(
+                  Map<String, dynamic>.from(item as Map),
+                ))
             .toList();
 
         if (mounted) {
@@ -189,6 +193,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
         // Mark existing messages as read
         await ref.read(messageServiceProvider).markRoomAsRead(widget.roomId);
+      } else {
+        if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
       debugPrint('[ChatScreen] Error loading messages: $e');
@@ -200,6 +206,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _setupSocket() {
     final socketService = ref.read(socketServiceProvider);
+
+    // Clean up previous listeners to prevent duplicate events
+    if (_onMessageReceived != null) {
+      socketService.offMessage(_onMessageReceived);
+      _onMessageReceived = null;
+    }
+    if (_onMessagesRead != null) {
+      socketService.offMessagesRead(_onMessagesRead);
+      _onMessagesRead = null;
+    }
 
     if (!socketService.isConnected) {
       socketService.connect().then((_) {
@@ -215,8 +231,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _onMessageReceived = (data) {
       if (!mounted) return;
 
-      if (data is Map<String, dynamic>) {
-        final incoming = ChatMessage.fromJson(data);
+      if (data is Map) {
+        final mapData = Map<String, dynamic>.from(data);
+        final incoming = ChatMessage.fromJson(mapData);
 
         // Ignore messages from other rooms
         if (incoming.roomId.isNotEmpty && incoming.roomId != widget.roomId) {
@@ -229,8 +246,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             (m) =>
                 m.id == incoming.id ||
                 (m.messageStatus == 'sending' &&
-                    m.senderId == incoming.senderId &&
-                    m.messageContent == incoming.messageContent),
+                    m.messageContent == incoming.messageContent &&
+                    (m.senderId == incoming.senderId ||
+                        m.senderId.isEmpty ||
+                        incoming.senderId == _currentUserId)),
           );
 
           if (existingIdx >= 0) {
@@ -256,14 +275,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Real-time read receipt listener
     _onMessagesRead = (data) {
       if (!mounted) return;
-      if (data is Map<String, dynamic> && data['roomId'] == widget.roomId) {
-        setState(() {
-          for (int i = 0; i < _messages.length; i++) {
-            if (_messages[i].senderId == _currentUserId) {
-              _messages[i] = _messages[i].copyWith(messageStatus: 'read');
+      if (data is Map) {
+        final mapData = Map<String, dynamic>.from(data);
+        if (mapData['roomId'] == widget.roomId) {
+          setState(() {
+            for (int i = 0; i < _messages.length; i++) {
+              if (_messages[i].senderId == _currentUserId) {
+                _messages[i] = _messages[i].copyWith(messageStatus: 'read');
+              }
             }
-          }
-        });
+          });
+        }
       }
     };
 
@@ -282,11 +304,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  Future<void> _sendMessage() async {
-    final text = _messageController.text.trim();
-    if (text.isEmpty || widget.roomId.isEmpty) return;
+  Future<void> _sendMessage([String? customText]) async {
+    final text = (customText ?? _messageController.text).trim();
+    if (text.isEmpty) return;
 
-    _messageController.clear();
+    if (widget.roomId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chat room not ready. Please go back and retry.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    if (customText == null) {
+      _messageController.clear();
+    }
 
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
     final optimisticMessage = ChatMessage(
@@ -311,7 +345,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         roomId: widget.roomId,
         message: text,
         messageType: 'text',
+        ack: (ack) {
+          if (!mounted) return;
+          if (ack is Map) {
+            final ackMap = Map<String, dynamic>.from(ack);
+            if (ackMap['message'] is Map) {
+              final serverMsg = ChatMessage.fromJson(
+                Map<String, dynamic>.from(ackMap['message'] as Map),
+              );
+              setState(() {
+                final idx = _messages.indexWhere((m) => m.id == tempId);
+                if (idx >= 0) {
+                  _messages[idx] = serverMsg;
+                }
+              });
+            }
+          }
+        },
       );
+
+      // Safety fallback: after 10s if still 'sending', mark failed
+      Future.delayed(const Duration(seconds: 10), () {
+        if (!mounted) return;
+        final idx = _messages.indexWhere((m) => m.id == tempId);
+        if (idx >= 0 && _messages[idx].messageStatus == 'sending') {
+          setState(() {
+            _messages[idx] = _messages[idx].copyWith(messageStatus: 'failed');
+          });
+        }
+      });
     } else {
       // Fallback to REST endpoint
       try {
@@ -319,9 +381,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           roomId: widget.roomId,
           messageContent: text,
         );
-        if (res.data is Map<String, dynamic> && res.data['message'] != null) {
+        if (res.data is Map && res.data['message'] != null) {
           final serverMsg = ChatMessage.fromJson(
-            res.data['message'] as Map<String, dynamic>,
+            Map<String, dynamic>.from(res.data['message'] as Map),
           );
           if (mounted) {
             setState(() {
@@ -337,6 +399,82 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         if (mounted) {
           setState(() {
             final idx = _messages.indexWhere((m) => m.id == tempId);
+            if (idx >= 0) {
+              _messages[idx] = _messages[idx].copyWith(messageStatus: 'failed');
+            }
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _retryMessage(ChatMessage msg) async {
+    setState(() {
+      final idx = _messages.indexWhere((m) => m.id == msg.id);
+      if (idx >= 0) {
+        _messages[idx] = _messages[idx].copyWith(messageStatus: 'sending');
+      }
+    });
+
+    final socketService = ref.read(socketServiceProvider);
+
+    if (socketService.isConnected) {
+      socketService.sendMessageToRoom(
+        roomId: widget.roomId,
+        message: msg.messageContent,
+        messageType: msg.messageType,
+        ack: (ack) {
+          if (!mounted) return;
+          if (ack is Map) {
+            final ackMap = Map<String, dynamic>.from(ack);
+            if (ackMap['message'] is Map) {
+              final serverMsg = ChatMessage.fromJson(
+                Map<String, dynamic>.from(ackMap['message'] as Map),
+              );
+              setState(() {
+                final idx = _messages.indexWhere((m) => m.id == msg.id);
+                if (idx >= 0) {
+                  _messages[idx] = serverMsg;
+                }
+              });
+            }
+          }
+        },
+      );
+
+      Future.delayed(const Duration(seconds: 10), () {
+        if (!mounted) return;
+        final idx = _messages.indexWhere((m) => m.id == msg.id);
+        if (idx >= 0 && _messages[idx].messageStatus == 'sending') {
+          setState(() {
+            _messages[idx] = _messages[idx].copyWith(messageStatus: 'failed');
+          });
+        }
+      });
+    } else {
+      try {
+        final res = await ref.read(messageServiceProvider).sendMessage(
+          roomId: widget.roomId,
+          messageContent: msg.messageContent,
+          messageType: msg.messageType,
+        );
+        if (res.data is Map && res.data['message'] != null) {
+          final serverMsg = ChatMessage.fromJson(
+            Map<String, dynamic>.from(res.data['message'] as Map),
+          );
+          if (mounted) {
+            setState(() {
+              final idx = _messages.indexWhere((m) => m.id == msg.id);
+              if (idx >= 0) {
+                _messages[idx] = serverMsg;
+              }
+            });
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            final idx = _messages.indexWhere((m) => m.id == msg.id);
             if (idx >= 0) {
               _messages[idx] = _messages[idx].copyWith(messageStatus: 'failed');
             }
@@ -420,7 +558,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final socketConnected = ref.watch(socketServiceProvider).isConnected;
     final providerName = widget.recipientName ?? 'Service Provider';
 
     return Scaffold(
@@ -465,30 +602,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: socketConnected
-                              ? Colors.green
-                              : Colors.orangeAccent,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        socketConnected ? 'Connected' : 'Connecting...',
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w600,
-                          color: socketConnected
-                              ? Colors.green
-                              : Colors.orangeAccent,
-                        ),
-                      ),
-                    ],
+                  ValueListenableBuilder<bool>(
+                    valueListenable:
+                        ref.read(socketServiceProvider).connectionNotifier,
+                    builder: (context, isConnected, _) {
+                      return Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isConnected
+                                  ? Colors.green
+                                  : Colors.orangeAccent,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isConnected ? 'Connected' : 'Connecting...',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                              color: isConnected
+                                  ? Colors.green
+                                  : Colors.orangeAccent,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -569,83 +712,105 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           final isCustomer = _currentUserId != null &&
                               message.senderId == _currentUserId;
 
+                          final isFailed = message.messageStatus == 'failed';
+
                           return Align(
                             alignment: isCustomer
                                 ? Alignment.centerRight
                                 : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              constraints: BoxConstraints(
-                                maxWidth:
-                                    MediaQuery.of(context).size.width * 0.75,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isCustomer
-                                    ? BrandColors.accent
-                                    : (isDark
-                                        ? const Color(0xFF1E293B)
-                                        : theme.cardColor),
-                                borderRadius: BorderRadius.only(
-                                  topLeft: const Radius.circular(16),
-                                  topRight: const Radius.circular(16),
-                                  bottomLeft: Radius.circular(
-                                    isCustomer ? 16 : 4,
-                                  ),
-                                  bottomRight: Radius.circular(
-                                    isCustomer ? 4 : 16,
-                                  ),
+                            child: GestureDetector(
+                              onTap: isCustomer && isFailed
+                                  ? () => _retryMessage(message)
+                                  : null,
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
                                 ),
-                                border: isCustomer
-                                    ? null
-                                    : Border.all(color: theme.dividerColor),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.03),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: isCustomer
-                                    ? CrossAxisAlignment.end
-                                    : CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    message.messageContent,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: isCustomer
-                                          ? Colors.white
-                                          : theme.textTheme.bodyLarge?.color,
-                                      height: 1.35,
+                                constraints: BoxConstraints(
+                                  maxWidth:
+                                      MediaQuery.of(context).size.width * 0.75,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isCustomer
+                                      ? (isFailed
+                                          ? Colors.red.shade900.withValues(alpha: 0.8)
+                                          : BrandColors.accent)
+                                      : (isDark
+                                          ? const Color(0xFF1E293B)
+                                          : theme.cardColor),
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: const Radius.circular(16),
+                                    topRight: const Radius.circular(16),
+                                    bottomLeft: Radius.circular(
+                                      isCustomer ? 16 : 4,
+                                    ),
+                                    bottomRight: Radius.circular(
+                                      isCustomer ? 4 : 16,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        _formatTime(message.createdAt),
-                                        style: TextStyle(
-                                          fontSize: 9.5,
-                                          color: isCustomer
-                                              ? Colors.white70
-                                              : theme
-                                                  .textTheme.bodyMedium?.color,
-                                        ),
+                                  border: isCustomer
+                                      ? (isFailed
+                                          ? Border.all(color: Colors.redAccent)
+                                          : null)
+                                      : Border.all(color: theme.dividerColor),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.03),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: isCustomer
+                                      ? CrossAxisAlignment.end
+                                      : CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message.messageContent,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: isCustomer
+                                            ? Colors.white
+                                            : theme.textTheme.bodyLarge?.color,
+                                        height: 1.35,
                                       ),
-                                      if (isCustomer) ...[
-                                        const SizedBox(width: 4),
-                                        _buildStatusIcon(message.messageStatus),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          _formatTime(message.createdAt),
+                                          style: TextStyle(
+                                            fontSize: 9.5,
+                                            color: isCustomer
+                                                ? Colors.white70
+                                                : theme
+                                                    .textTheme.bodyMedium?.color,
+                                          ),
+                                        ),
+                                        if (isCustomer) ...[
+                                          const SizedBox(width: 4),
+                                          _buildStatusIcon(message.messageStatus),
+                                          if (isFailed) ...[
+                                            const SizedBox(width: 4),
+                                            const Text(
+                                              'Retry',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ],
-                                    ],
-                                  ),
-                                ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           );

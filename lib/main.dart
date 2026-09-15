@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'state/app_state.dart';
@@ -18,9 +17,7 @@ class DevHttpOverrides extends HttpOverrides {
 }
 
 void main() {
-  if (kDebugMode) {
-    HttpOverrides.global = DevHttpOverrides();
-  }
+  HttpOverrides.global = DevHttpOverrides();
   runApp(
     const ProviderScope(
       child: MyApp(),

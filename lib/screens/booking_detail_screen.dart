@@ -237,7 +237,10 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
     final currentStep = _getStatusStepIndex(status);
     final isCancelled = status.toLowerCase() == 'cancelled';
 
-    final bookingId = booking['id']?.toString() ?? '';
+    final rawBookingId = booking['id']?.toString();
+    final bookingId = (rawBookingId != null && rawBookingId.isNotEmpty)
+        ? rawBookingId
+        : (widget.bookingId ?? '');
     final shortId = bookingId.length > 8
         ? bookingId.substring(0, 8).toUpperCase()
         : bookingId.toUpperCase();
@@ -1274,9 +1277,15 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
                         child: ElevatedButton.icon(
                           onPressed: () {
                             Navigator.pop(modalCtx);
-                            final bId = widget.bookingId ??
-                                _bookingData?['id']?.toString() ??
-                                '';
+                            final bookingObj =
+                                _bookingData?['booking'] as Map<String, dynamic>? ??
+                                _bookingData ??
+                                {};
+                            final bId = widget.bookingId?.isNotEmpty == true
+                                ? widget.bookingId!
+                                : (bookingObj['id']?.toString() ??
+                                    _bookingData?['id']?.toString() ??
+                                    '');
                             context.push(
                               '/chat',
                               extra: {

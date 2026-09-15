@@ -82,7 +82,9 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/booking-detail',
       builder: (context, state) {
-        final booking = state.extra as Map<String, dynamic>?;
+        final booking = state.extra is Map
+            ? Map<String, dynamic>.from(state.extra as Map)
+            : null;
         final bookingId = state.uri.queryParameters['booking_id'] ??
             booking?['booking']?['id']?.toString() ??
             booking?['id']?.toString();
@@ -95,7 +97,9 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/chat',
       builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>?;
+        final extra = state.extra is Map
+            ? Map<String, dynamic>.from(state.extra as Map)
+            : null;
         final roomId = state.uri.queryParameters['roomId'] ??
             extra?['roomId']?.toString() ??
             '';
@@ -116,7 +120,9 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/reviews',
       builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>?;
+        final extra = state.extra is Map
+            ? Map<String, dynamic>.from(state.extra as Map)
+            : null;
         final serviceId = state.uri.queryParameters['service_id'] ??
             extra?['serviceId']?.toString();
         final serviceTitle = state.uri.queryParameters['service_title'] ??

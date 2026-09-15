@@ -14,6 +14,7 @@ class SocketService {
   SocketService._internal();
 
   socket_io.Socket? _socket;
+  final ValueNotifier<bool> connectionNotifier = ValueNotifier<bool>(false);
 
   socket_io.Socket? get socket => _socket;
 
@@ -33,6 +34,7 @@ class SocketService {
 
     if (_socket != null && _socket!.connected) {
       debugPrint('[SocketService] Socket already connected (id: ${_socket!.id}).');
+      connectionNotifier.value = true;
       return;
     }
 
@@ -57,6 +59,7 @@ class SocketService {
 
       _socket!.onConnect((_) {
         debugPrint('[SocketService] Connected successfully. Socket ID: ${_socket?.id}');
+        connectionNotifier.value = true;
         // Re-join active room on reconnection if previously joined
         if (_activeRoomId != null) {
           debugPrint('[SocketService] Rejoining active room: $_activeRoomId');
@@ -66,19 +69,23 @@ class SocketService {
 
       _socket!.onConnectError((err) {
         debugPrint('[SocketService] Connection error: $err');
+        connectionNotifier.value = false;
       });
 
       _socket!.onError((err) {
         debugPrint('[SocketService] Socket error: $err');
+        connectionNotifier.value = false;
       });
 
       _socket!.onDisconnect((reason) {
         debugPrint('[SocketService] Disconnected: $reason');
+        connectionNotifier.value = false;
       });
 
       _socket!.connect();
     } catch (e) {
       debugPrint('[SocketService] Exception while connecting: $e');
+      connectionNotifier.value = false;
     }
   }
 
@@ -106,14 +113,20 @@ class SocketService {
     required String roomId,
     required String message,
     String messageType = 'text',
+    void Function(dynamic ack)? ack,
   }) {
     if (_socket != null && _socket!.connected) {
       debugPrint('[SocketService] Emitting sendMessageToRoom -> $roomId: $message');
-      _socket!.emit('sendMessageToRoom', {
+      final payload = {
         'room': roomId,
         'message': message,
         'messageType': messageType,
-      });
+      };
+      if (ack != null) {
+        _socket!.emitWithAck('sendMessageToRoom', payload, ack: ack);
+      } else {
+        _socket!.emit('sendMessageToRoom', payload);
+      }
     } else {
       debugPrint('[SocketService] Socket not connected, could not emit message.');
     }
@@ -147,6 +160,7 @@ class SocketService {
     if (_socket != null) {
       debugPrint('[SocketService] Disconnecting socket...');
       _activeRoomId = null;
+      connectionNotifier.value = false;
       _socket!.disconnect();
       _socket!.dispose();
       _socket = null;
