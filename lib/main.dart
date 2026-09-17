@@ -1,6 +1,10 @@
 import 'dart:io';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'firebase_options.dart';
+import 'network/services/notification_service.dart';
 import 'state/app_state.dart';
 import 'theme/brand_theme.dart';
 import 'routing/app_router.dart';
@@ -16,14 +20,32 @@ class DevHttpOverrides extends HttpOverrides {
   }
 }
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   HttpOverrides.global = DevHttpOverrides();
+
+  try {
+    // 1. Initialize Firebase with platform-specific options
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+
+    // 2. Set the background messaging handler early before runApp
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+    // 3. Initialize the Push Notification Service (Permissions, Channels, Listeners)
+    await NotificationService.instance.initialize();
+  } catch (e) {
+    debugPrint('Firebase/Notification initialization error: $e');
+  }
+
   runApp(
     const ProviderScope(
       child: MyApp(),
     ),
   );
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

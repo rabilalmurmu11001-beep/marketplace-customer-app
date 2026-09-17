@@ -32,4 +32,18 @@ class UserService {
       rethrow;
     }
   }
+
+  /// Sync FCM device token with backend
+  Future<Response?> syncFcmToken(String fcmToken) async {
+    try {
+      Response<dynamic> result = await _dio.put(
+        "/users/update/me",
+        data: {"fcmToken": fcmToken},
+      );
+      return result;
+    } catch (_) {
+      return null;
+    }
+  }
 }
+
