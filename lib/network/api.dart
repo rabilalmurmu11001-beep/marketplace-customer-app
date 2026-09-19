@@ -4,11 +4,12 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:customer_app/routing/app_router.dart';
+import 'services/notification_service.dart';
 
 // final String host = 'https://13.51.197.245:7000/';
 // final String host = 'http://10.11.73.96:7000';
-// final String host = 'https://192.168.31.13:7000';
-final String host = 'https://10.113.40.96:7000';
+final String host = 'https://192.168.31.13:7000';
+// final String host = 'https://10.113.40.96:7000';
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
@@ -109,6 +110,7 @@ class AuthInterceptor extends Interceptor {
       // 2. Persist it if it exists and is a String
       if (token != null && token is String) {
         await _tokenRepository.persistToken(token);
+        NotificationService.instance.syncTokenWithBackend();
       }
     }
     // 3. Handle unauthorized response

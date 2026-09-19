@@ -1,5 +1,6 @@
 import 'package:customer_app/network/api.dart';
 import 'package:customer_app/network/services/socketService.dart';
+import 'package:customer_app/network/services/notification_service.dart';
 import 'package:customer_app/security/secureStorage.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -108,7 +109,7 @@ class AuthService {
   Future<bool> logout() async {
     try {
       final tokenRepository = TokenRepository();
-
+      await NotificationService.instance.deleteTokenFromBackend();
       await tokenRepository.deleteToken();
       SocketService.instance.disconnect();
       return true;
