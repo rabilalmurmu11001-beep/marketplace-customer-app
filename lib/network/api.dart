@@ -6,10 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:customer_app/routing/app_router.dart';
 import 'services/notification_service.dart';
 
-// final String host = 'https://13.51.197.245:7000/';
+final String host = 'https://13.51.197.245:7000/';
 // final String host = 'http://10.11.73.96:7000';
 // final String host = 'https://192.168.31.13:7000';
-final String host = 'https://10.113.40.96:7000';
+// final String host = 'https://10.113.40.96:7000';
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
