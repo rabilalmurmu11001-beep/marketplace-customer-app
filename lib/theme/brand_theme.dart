@@ -17,6 +17,11 @@ class BrandColors {
   static const Color darkBorder = Color(0xFF1E293B);
   static const Color darkTextPrimary = Color(0xFFF8FAFC);
   static const Color darkTextSecondary = Color(0xFF94A3B8);
+
+  // Status Colors
+  static const Color success = Color(0xFF10B981);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color danger = Color(0xFFEF4444);
 }
 
 class BrandTheme {

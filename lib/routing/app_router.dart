@@ -17,6 +17,7 @@ import '../screens/categories_screen.dart';
 import '../screens/reviews_screen.dart';
 import '../screens/addresses_screen.dart';
 import '../screens/notifications_screen.dart';
+import '../screens/otp_verification_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
@@ -29,6 +30,27 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(path: '/signup', builder: (context, state) => const SignupScreen()),
+    GoRoute(
+      path: '/signup-otp',
+      builder: (context, state) {
+        final extra = state.extra is Map<String, dynamic>
+            ? state.extra as Map<String, dynamic>
+            : <String, dynamic>{};
+        return OtpVerificationScreen(
+          signupToken: extra['signupToken'] as String? ??
+              state.uri.queryParameters['signupToken'],
+          email: extra['email'] as String? ??
+              state.uri.queryParameters['email'] ??
+              '',
+          mobile: extra['mobile'] as String? ??
+              state.uri.queryParameters['mobile'],
+          requiresPhoneVerification:
+              extra['requiresPhoneVerification'] as bool? ??
+                  (state.uri.queryParameters['requiresPhoneVerification'] ==
+                      'true'),
+        );
+      },
+    ),
     GoRoute(
       path: '/categories',
       builder: (context, state) => const CategoriesScreen(),

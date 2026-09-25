@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../network/services/authServices.dart';
-import '../network/services/socketService.dart';
 import '../theme/brand_theme.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -16,7 +15,7 @@ class SignupScreen extends ConsumerStatefulWidget {
 class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _nameController = TextEditingController(text: 'Emma Watson');
   final _emailController = TextEditingController(text: 'emma@gmail.com');
-  final _phoneController = TextEditingController(text: '+1 (555) 234-5678');
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController(text: 'password123');
 
   bool _isLoading = false;
@@ -34,17 +33,55 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   void _handleSignup() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
-    final phone = _phoneController.text.trim();
+    final rawPhone = _phoneController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in all registration parameters.'),
+          content: Text('Please enter your name, email, and password.'),
           backgroundColor: Colors.redAccent,
         ),
       );
       return;
+    }
+
+    if (!email.contains('@') || !email.contains('.')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid email address.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    if (password.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password must be at least 8 characters.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    // Sanitize optional phone: keep leading + if present, strip other non-digits
+    String? cleanPhone;
+    if (rawPhone.isNotEmpty) {
+      final sanitized = rawPhone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+      if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(sanitized)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Please enter a valid mobile number (10-15 digits) or leave it blank.',
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+      cleanPhone = sanitized;
     }
 
     setState(() {
@@ -53,25 +90,37 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
     try {
       final authService = ref.read(authServiceProvider);
-      final res = await authService.signup(name, password, email, phone);
+      final res = await authService.signup(name, password, email, cleanPhone);
 
-      String? token;
-      if (res.data is Map<String, dynamic>) {
-        token = res.data['token'];
-      }
-      await ref.read(socketServiceProvider).connect(token);
+      final data = res.data is Map ? res.data : <String, dynamic>{};
+      final signupToken = data['signupToken'] as String?;
+      final requiresPhone = data['requiresPhoneVerification'] == true;
+      final returnedEmail = data['email'] as String? ?? email;
+      final returnedMobile = data['mobile'] as String? ?? cleanPhone;
+      final message =
+          data['message'] as String? ?? 'Verification code sent.';
 
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registration successful. Access authorized.'),
+          SnackBar(
+            content: Text(message),
             backgroundColor: BrandColors.accent,
           ),
         );
-        context.go('/home');
+
+        context.push(
+          '/signup-otp',
+          extra: {
+            'signupToken': signupToken,
+            'email': returnedEmail,
+            'mobile': returnedMobile,
+            'requiresPhoneVerification': requiresPhone,
+          },
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -81,8 +130,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         String errorMsg = 'Registration failed. Please check parameters.';
         if (e is DioException) {
           final data = e.response?.data;
-          if (data is Map) {
-            errorMsg = data['message'] ?? e.message ?? errorMsg;
+          if (data is Map && data['message'] != null) {
+            errorMsg = data['message'].toString();
           } else if (data is String && data.isNotEmpty) {
             if (data.contains('<!DOCTYPE html>') || data.contains('<html')) {
               errorMsg = e.message ?? errorMsg;
@@ -201,14 +250,35 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           ),
                           const SizedBox(height: 20),
                           
-                          // Mobile Secure Number
-                          const Text(
-                            'MOBILE SECURE NUMBER',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
-                            ),
+                          // Mobile Secure Number (Optional)
+                          Row(
+                            children: [
+                              const Text(
+                                'MOBILE NUMBER',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: theme.dividerColor.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'OPTIONAL',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.textTheme.bodyMedium?.color,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 8),
                           TextField(
@@ -217,6 +287,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                             enabled: !_isLoading,
                             style: const TextStyle(fontSize: 13),
                             decoration: InputDecoration(
+                              hintText: '+1234567890 (Optional)',
+                              hintStyle: TextStyle(
+                                fontSize: 13,
+                                color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+                              ),
                               filled: true,
                               fillColor: theme.cardColor,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
