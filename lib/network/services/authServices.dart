@@ -135,9 +135,13 @@ class AuthService {
   /// Request an OTP for the given identifier (email or phone)
   Future<Response> requestOtp(String identifier) async {
     try {
+      final isEmail = identifier.contains('@');
       Response<dynamic> result = await _dio.post(
         "/auth/request-otp",
-        data: {"email": identifier},
+        data: {
+          "identifier": identifier,
+          if (isEmail) "email": identifier else "mobile": identifier,
+        },
       );
 
       return result;
