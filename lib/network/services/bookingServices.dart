@@ -54,4 +54,19 @@ class BookingServices {
       rethrow;
     }
   }
+
+  Future<Response> cancelBooking(String id, String note) async {
+    try {
+      final Response<dynamic> result = await _dio.patch(
+        "/bookings/$id/cancel",
+        data: {
+          "note": note,
+          "reason": note,
+        },
+      );
+      return result;
+    } catch (err) {
+      rethrow;
+    }
+  }
 }

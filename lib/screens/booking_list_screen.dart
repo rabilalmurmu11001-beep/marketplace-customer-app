@@ -96,6 +96,8 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
     switch (status.toLowerCase()) {
       case 'requested':
         return Colors.orangeAccent;
+      case 'assigned':
+        return Colors.indigoAccent;
       case 'accepted':
         return BrandColors.accent;
       case 'in_progress':
@@ -113,6 +115,8 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
     switch (status.toLowerCase()) {
       case 'requested':
         return 'REQUESTED';
+      case 'assigned':
+        return 'ASSIGNED';
       case 'accepted':
         return 'CONFIRMED';
       case 'in_progress':
@@ -128,7 +132,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
 
   bool _isActiveBooking(String status) {
     final s = status.toLowerCase();
-    return s == 'requested' || s == 'accepted' || s == 'in_progress';
+    return s == 'requested' || s == 'assigned' || s == 'accepted' || s == 'in_progress';
   }
 
   @override

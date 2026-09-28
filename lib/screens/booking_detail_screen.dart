@@ -103,6 +103,8 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
     switch (status.toLowerCase()) {
       case 'requested':
         return Colors.orangeAccent;
+      case 'assigned':
+        return Colors.indigoAccent;
       case 'accepted':
         return BrandColors.accent;
       case 'in_progress':
@@ -120,8 +122,10 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
     switch (status.toLowerCase()) {
       case 'requested':
         return 'REQUEST DISPATCHED';
-      case 'accepted':
+      case 'assigned':
         return 'TECHNICIAN ASSIGNED';
+      case 'accepted':
+        return 'BOOKING CONFIRMED';
       case 'in_progress':
         return 'IN PROGRESS';
       case 'completed':
@@ -137,6 +141,8 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
     switch (status.toLowerCase()) {
       case 'requested':
         return 0;
+      case 'assigned':
+        return 1;
       case 'accepted':
         return 1;
       case 'in_progress':
@@ -747,8 +753,152 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
               ),
             ),
           ),
+          if (!isCancelled && status.toLowerCase() != 'completed' && bookingId.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showCancelDialog(context, bookingId),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  side: const BorderSide(color: Colors.redAccent),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.cancel_outlined, size: 16),
+                label: const Text(
+                  'Cancel Booking',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 28),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showCancelDialog(BuildContext context, String bookingId) async {
+    final noteController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+              SizedBox(width: 8),
+              Text(
+                'Cancel Booking',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Please provide a reason or note for cancelling this booking (required):',
+                  style: TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: noteController,
+                  maxLines: 3,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Enter cancellation note (min 3 characters)...',
+                    hintStyle: const TextStyle(fontSize: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.all(12),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().length < 3) {
+                      return 'Note must be at least 3 characters.';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSubmitting ? null : () => Navigator.of(dialogCtx).pop(),
+              child: const Text('Back'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() => isSubmitting = true);
+                      try {
+                        final note = noteController.text.trim();
+                        await ref.read(servicesServiceProvider).cancelBooking(bookingId, note);
+                        if (dialogCtx.mounted) {
+                          Navigator.of(dialogCtx).pop();
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('✓ Booking cancelled successfully.'),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                          _fetchBookingDetail(bookingId);
+                        }
+                      } catch (e) {
+                        setDialogState(() => isSubmitting = false);
+                        if (context.mounted) {
+                          String msg = 'Failed to cancel booking';
+                          if (e is DioException && e.response?.data is Map) {
+                            msg = e.response?.data['message']?.toString() ?? msg;
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(msg),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Confirm Cancel'),
+            ),
+          ],
+        ),
       ),
     );
   }
