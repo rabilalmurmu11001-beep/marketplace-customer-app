@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../network/services/authServices.dart';
+import '../network/services/notification_service.dart';
 import '../network/services/socketService.dart';
 import '../theme/brand_theme.dart';
 
@@ -171,6 +172,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         token = res.data['token'];
       }
       await ref.read(socketServiceProvider).connect(token);
+      NotificationService.instance.syncTokenWithBackend();
 
       if (mounted) {
         setState(() {

@@ -22,6 +22,33 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   );
   debugPrint("Handling background FCM message ID: ${message.messageId}");
   debugPrint("Background data payload: ${message.data}");
+
+  // If message contains data payload but no system notification payload, show local notification
+  if (message.notification == null && message.data.isNotEmpty) {
+    final title = message.data['title'] ?? 'New Notification';
+    final body = message.data['body'] ?? message.data['message'] ?? '';
+    if (body.isNotEmpty) {
+      final localNotifications = FlutterLocalNotificationsPlugin();
+      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      await localNotifications.initialize(settings: const InitializationSettings(android: androidSettings));
+      await localNotifications.show(
+        id: message.messageId.hashCode,
+        title: title,
+        body: body,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'high_importance_channel',
+            'High Importance Notifications',
+            channelDescription: 'This channel is used for important push notifications.',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+          ),
+        ),
+        payload: jsonEncode(message.data),
+      );
+    }
+  }
 }
 
 /// Service class managing push notification lifecycle, channels, permissions,
@@ -52,11 +79,11 @@ class NotificationService {
     if (_isInitialized) return;
     _isInitialized = true;
 
-    // 1. Request Notification Permissions (iOS & Android 13+)
-    await _requestPermissions();
-
-    // 2. Setup Local Notifications (Foreground heads-up banners on Android)
+    // 1. Setup Local Notifications (Foreground heads-up banners on Android)
     await _setupLocalNotifications();
+
+    // 2. Request Notification Permissions (iOS & Android 13+)
+    await _requestPermissions();
 
     // 3. Configure Foreground notification presentation options for iOS
     await _messaging.setForegroundNotificationPresentationOptions(
@@ -95,6 +122,15 @@ class NotificationService {
     debugPrint(
       'Notification permission authorization status: ${settings.authorizationStatus}',
     );
+
+    // Request Android 13+ (API 33+) notification runtime permission explicitly
+    if (!kIsWeb && Platform.isAndroid) {
+      final androidImplementation = _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      final granted = await androidImplementation?.requestNotificationsPermission();
+      debugPrint('Android 13+ Notification permission prompt result: $granted');
+    }
   }
 
   /// Initialize flutter_local_notifications plugin and create Android channel
