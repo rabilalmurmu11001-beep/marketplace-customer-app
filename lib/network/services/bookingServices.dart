@@ -22,6 +22,8 @@ class BookingServices {
         "serviceId": bookingData['serviceId'],
         "timeSlot": bookingData['timeSlot'],
         "notes": bookingData['notes'] ?? '',
+        if (bookingData['referenceImages'] != null)
+          "referenceImages": bookingData['referenceImages'],
         if (bookingData['couponCode'] != null &&
             bookingData['couponCode'].toString().isNotEmpty)
           "couponCode": bookingData['couponCode'],

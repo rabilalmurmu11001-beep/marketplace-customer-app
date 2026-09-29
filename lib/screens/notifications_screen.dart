@@ -10,6 +10,7 @@ class NotificationItem {
   final String time;
   final IconData icon;
   final bool isPromo;
+  final String type;
   final Map<String, dynamic>? data;
   bool isRead;
 
@@ -20,6 +21,7 @@ class NotificationItem {
     required this.time,
     required this.icon,
     this.isPromo = false,
+    this.type = 'general',
     this.isRead = false,
     this.data,
   });
@@ -62,6 +64,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           isPromo = true;
         } else if (type == 'call') {
           icon = Icons.call_outlined;
+        } else if (type == 'service') {
+          icon = Icons.build_circle_outlined;
+        } else if (type == 'review' || type == 'rating') {
+          icon = Icons.star_outline;
+        } else if (type == 'address' || type == 'location') {
+          icon = Icons.location_on_outlined;
+        } else if (type == 'profile' || type == 'account') {
+          icon = Icons.person_outline;
         }
 
         // Format created date
@@ -87,6 +97,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           time: timeStr,
           icon: icon,
           isPromo: isPromo,
+          type: type,
           isRead: m['isRead'] == true,
           data: m['data'] is Map ? Map<String, dynamic>.from(m['data'] as Map) : null,
         );
@@ -129,26 +140,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       await NotificationService.instance.markAsRead(notif.id);
     }
 
-    if (notif.data != null && mounted) {
-      final data = notif.data!;
-      // 1. Direct route
-      if (data.containsKey('route') && data['route'] is String && (data['route'] as String).isNotEmpty) {
-        context.push(data['route'] as String);
-        return;
-      }
-      // 2. Booking route
-      final bookingId = data['booking_id'] ?? data['bookingId'] ?? data['id'];
-      if (data['type'] == 'booking' && bookingId != null) {
-        context.push('/booking-detail?booking_id=$bookingId');
-        return;
-      }
-      // 3. Chat route
-      final roomId = data['roomId'] ?? data['room_id'];
-      if (data['type'] == 'chat' && roomId != null) {
-        final recipientName = data['recipientName'] ?? data['senderName'] ?? '';
-        context.push('/chat?roomId=$roomId&recipientName=$recipientName');
-        return;
-      }
+    if (!mounted) return;
+
+    final targetRoute =
+        NotificationService.resolveRoute(notif.data, type: notif.type);
+    if (targetRoute.isNotEmpty && targetRoute != '/notifications') {
+      context.push(targetRoute);
     }
   }
 

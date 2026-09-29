@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../network/services/notification_service.dart';
 import '../network/services/socketService.dart';
+import '../routing/app_router.dart';
 import '../security/secureStorage.dart';
 import '../theme/brand_theme.dart';
 
@@ -48,11 +49,29 @@ class _SplashScreenState extends State<SplashScreen> {
       if (token != null && token.isNotEmpty) {
         SocketService.instance.connect(token);
         NotificationService.instance.syncTokenWithBackend();
-        if (mounted) context.go('/home');
+        NotificationService.instance.isAppReady = true;
+
+        final pendingRoute =
+            NotificationService.instance.consumePendingInitialRoute();
+        if (mounted) {
+          if (pendingRoute != null &&
+              pendingRoute.isNotEmpty &&
+              pendingRoute != '/home') {
+            context.go('/home');
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              appRouter.push(pendingRoute);
+            });
+          } else {
+            context.go('/home');
+          }
+        }
       } else {
+        NotificationService.instance.consumePendingInitialRoute();
+        NotificationService.instance.isAppReady = true;
         if (mounted) context.go('/onboarding');
       }
     } catch (_) {
+      NotificationService.instance.isAppReady = true;
       if (mounted) context.go('/onboarding');
     }
   }

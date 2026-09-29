@@ -2,6 +2,8 @@ import 'package:customer_app/store/use_app_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import '../network/services/uploadService.dart';
 import '../theme/brand_theme.dart';
 
 class FunnelStep1Screen extends ConsumerStatefulWidget {
@@ -17,6 +19,8 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
   late DateTime scheduleDate = DateTime.now();
   late String chosenAddressId = '';
   late String chosenTimeSlot = '';
+  final List<String> _referenceImages = [];
+  bool _isUploadingImage = false;
 
   @override
   void initState() {
@@ -43,7 +47,168 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
     }
   }
 
+  Future<void> _showImageSourcePicker() async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bottomSheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Add Reference Photo',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Choose how you would like to select photos.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: BrandColors.accent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.camera_alt_outlined, color: BrandColors.accent),
+                  ),
+                  title: const Text('Take Photo', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: const Text('Use your device camera', style: TextStyle(fontSize: 12)),
+                  onTap: () {
+                    Navigator.pop(bottomSheetContext);
+                    _pickImages(ImageSource.camera);
+                  },
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: BrandColors.accent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.photo_library_outlined, color: BrandColors.accent),
+                  ),
+                  title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: const Text('Select one or more photos from gallery', style: TextStyle(fontSize: 12)),
+                  onTap: () {
+                    Navigator.pop(bottomSheetContext);
+                    _pickImages(ImageSource.gallery);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickImages(ImageSource source) async {
+    final picker = ImagePicker();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      List<XFile> pickedFiles = [];
+      if (source == ImageSource.camera) {
+        final photo = await picker.pickImage(
+          source: ImageSource.camera,
+          maxWidth: 1600,
+          maxHeight: 1600,
+          imageQuality: 85,
+        );
+        if (photo != null) {
+          pickedFiles.add(photo);
+        }
+      } else {
+        pickedFiles = await picker.pickMultiImage(
+          maxWidth: 1600,
+          maxHeight: 1600,
+          imageQuality: 85,
+        );
+      }
+
+      if (pickedFiles.isEmpty) return;
+
+      setState(() {
+        _isUploadingImage = true;
+      });
+
+      final uploadService = ref.read(uploadServiceProvider);
+      int successCount = 0;
+
+      for (final file in pickedFiles) {
+        try {
+          final result = await uploadService.uploadFile(
+            file: file,
+            folder: 'bookings',
+          );
+          if (result.url.isNotEmpty) {
+            _referenceImages.add(result.url);
+            successCount++;
+          }
+        } catch (e) {
+          debugPrint('Failed to upload image: $e');
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _isUploadingImage = false;
+        });
+
+        if (successCount < pickedFiles.length) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                'Uploaded $successCount of ${pickedFiles.length} photos. Some failed to upload.',
+              ),
+              backgroundColor: Colors.orangeAccent,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isUploadingImage = false;
+        });
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Failed to select images: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
   void handleViewBookingSummery() {
+    if (_isUploadingImage) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please wait for photos to finish uploading.'),
+          backgroundColor: Colors.orangeAccent,
+        ),
+      );
+      return;
+    }
+
     final customerAddresses = ref.read(customerAddressProvider) ?? [];
     if (customerAddresses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -68,6 +233,7 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
         'scheduleDate': scheduleDate,
         'timeSlot': chosenTimeSlot.isNotEmpty ? chosenTimeSlot : '02:00 PM',
         'description': _descriptionController.text,
+        'referenceImages': _referenceImages,
       },
     );
   }
@@ -451,6 +617,206 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
                               color: BrandColors.accent,
                             ),
                           ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Reference Photos (Optional)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'REFERENCE PHOTOS (OPTIONAL)',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          if (_referenceImages.isNotEmpty)
+                            Text(
+                              '${_referenceImages.length} attached',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: BrandColors.accent,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Upload photos of the problem or space to help your service provider prepare.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: theme.textTheme.bodyMedium?.color
+                              ?.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      SizedBox(
+                        height: 96,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            // Add button
+                            InkWell(
+                              onTap: _isUploadingImage
+                                  ? null
+                                  : _showImageSourcePicker,
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                width: 90,
+                                height: 96,
+                                decoration: BoxDecoration(
+                                  color: theme.cardColor,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: BrandColors.accent
+                                        .withValues(alpha: 0.4),
+                                    style: BorderStyle.solid,
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: BrandColors.accent
+                                            .withValues(alpha: 0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.add_a_photo_outlined,
+                                        size: 20,
+                                        color: BrandColors.accent,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      '+ Add Photo',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: BrandColors.accent,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // Uploading indicator
+                            if (_isUploadingImage) ...[
+                              const SizedBox(width: 10),
+                              Container(
+                                width: 90,
+                                height: 96,
+                                decoration: BoxDecoration(
+                                  color: theme.cardColor,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: theme.dividerColor),
+                                ),
+                                child: const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          BrandColors.accent,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Uploading...',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            // Attached Images
+                            for (int i = 0; i < _referenceImages.length; i++) ...[
+                              const SizedBox(width: 10),
+                              Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: Container(
+                                      width: 90,
+                                      height: 96,
+                                      decoration: BoxDecoration(
+                                        color: theme.dividerColor
+                                            .withValues(alpha: 0.2),
+                                      ),
+                                      child: Image.network(
+                                        _referenceImages[i],
+                                        fit: BoxFit.cover,
+                                        loadingBuilder:
+                                            (context, child, progress) {
+                                          if (progress == null) return child;
+                                          return const Center(
+                                            child: SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child:
+                                                  CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return const Center(
+                                            child: Icon(
+                                              Icons.broken_image_outlined,
+                                              size: 24,
+                                              color: Colors.grey,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _referenceImages.removeAt(i);
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(3),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.black54,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          size: 14,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       const SizedBox(height: 20),

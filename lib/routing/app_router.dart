@@ -108,6 +108,25 @@ final GoRouter appRouter = GoRouter(
             ? Map<String, dynamic>.from(state.extra as Map)
             : null;
         final bookingId = state.uri.queryParameters['booking_id'] ??
+            state.uri.queryParameters['id'] ??
+            state.uri.queryParameters['bookingId'] ??
+            booking?['booking']?['id']?.toString() ??
+            booking?['id']?.toString();
+        return BookingDetailScreen(
+          booking: booking,
+          bookingId: bookingId,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/bookings/detail',
+      builder: (context, state) {
+        final booking = state.extra is Map
+            ? Map<String, dynamic>.from(state.extra as Map)
+            : null;
+        final bookingId = state.uri.queryParameters['booking_id'] ??
+            state.uri.queryParameters['id'] ??
+            state.uri.queryParameters['bookingId'] ??
             booking?['booking']?['id']?.toString() ??
             booking?['id']?.toString();
         return BookingDetailScreen(
@@ -123,14 +142,25 @@ final GoRouter appRouter = GoRouter(
             ? Map<String, dynamic>.from(state.extra as Map)
             : null;
         final roomId = state.uri.queryParameters['roomId'] ??
+            state.uri.queryParameters['room_id'] ??
+            state.uri.queryParameters['booking_id'] ??
+            state.uri.queryParameters['bookingId'] ??
             extra?['roomId']?.toString() ??
+            extra?['room_id']?.toString() ??
+            extra?['bookingId']?.toString() ??
             '';
         final recipientName = state.uri.queryParameters['recipientName'] ??
-            extra?['recipientName']?.toString();
+            state.uri.queryParameters['senderName'] ??
+            extra?['recipientName']?.toString() ??
+            extra?['senderName']?.toString();
         final recipientPhoto = state.uri.queryParameters['recipientPhoto'] ??
-            extra?['recipientPhoto']?.toString();
+            state.uri.queryParameters['senderPhoto'] ??
+            extra?['recipientPhoto']?.toString() ??
+            extra?['senderPhoto']?.toString();
         final recipientId = state.uri.queryParameters['recipientId'] ??
-            extra?['recipientId']?.toString();
+            state.uri.queryParameters['senderId'] ??
+            extra?['recipientId']?.toString() ??
+            extra?['senderId']?.toString();
         return ChatScreen(
           roomId: roomId,
           recipientName: recipientName,

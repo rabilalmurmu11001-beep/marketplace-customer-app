@@ -50,6 +50,8 @@ class _FunnelStep2ScreenState extends ConsumerState<FunnelStep2Screen> {
         "serviceId": widget.bookingSummery?['service']?['id'],
         "timeSlot": widget.bookingSummery?['timeSlot'],
         "notes": widget.bookingSummery?['description'],
+        if (widget.bookingSummery?['referenceImages'] != null)
+          "referenceImages": widget.bookingSummery?['referenceImages'],
         if (widget.bookingSummery?['couponCode'] != null)
           "couponCode": widget.bookingSummery?['couponCode'],
       });
@@ -318,6 +320,80 @@ class _FunnelStep2ScreenState extends ConsumerState<FunnelStep2Screen> {
                                     fontWeight: FontWeight.bold,
                                     height: 1.4,
                                     color: theme.textTheme.bodyLarge?.color,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (widget.bookingSummery?['referenceImages'] is List &&
+                              (widget.bookingSummery!['referenceImages'] as List)
+                                  .isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            const Divider(height: 1),
+                            const SizedBox(height: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'REFERENCE PHOTOS:',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: BrandColors.accent,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '(${(widget.bookingSummery!['referenceImages'] as List).length})',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.textTheme.bodyMedium?.color
+                                            ?.withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  height: 64,
+                                  child: ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: (widget.bookingSummery!['referenceImages']
+                                            as List)
+                                        .length,
+                                    separatorBuilder: (context, index) =>
+                                        const SizedBox(width: 8),
+                                    itemBuilder: (context, index) {
+                                      final imgUrl =
+                                          (widget.bookingSummery!['referenceImages']
+                                                  as List)[index]
+                                              .toString();
+                                      return ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          imgUrl,
+                                          width: 64,
+                                          height: 64,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Container(
+                                            width: 64,
+                                            height: 64,
+                                            color: Colors.grey
+                                                .withValues(alpha: 0.2),
+                                            child: const Icon(
+                                              Icons.broken_image_outlined,
+                                              size: 20,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
                               ],

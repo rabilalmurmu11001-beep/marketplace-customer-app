@@ -154,6 +154,94 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
     }
   }
 
+  void _showImagePreviewDialog(
+    BuildContext context,
+    String imageUrl,
+    int current,
+    int total,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  color: Colors.black,
+                  child: InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) => const Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          size: 48,
+                          color: Colors.white54,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(dialogContext),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 14,
+                left: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Photo $current of $total',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -259,6 +347,11 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
     final timeSlot =
         booking['scheduledTime']?.toString() ?? 'Flexible Window';
     final notes = booking['notes']?.toString() ?? '';
+    final rawReferenceImages =
+        booking['referenceImages'] ?? booking['reference_images'];
+    final List<String> referenceImages = (rawReferenceImages is List)
+        ? rawReferenceImages.map((e) => e.toString()).toList()
+        : <String>[];
 
     final house = address['house_number']?.toString();
     final street = address['street_no_or_name']?.toString();
@@ -510,6 +603,81 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                // Reference Photos
+                if (referenceImages.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.photo_library_outlined,
+                        size: 14,
+                        color: BrandColors.accent,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Attached Reference Photos (${referenceImages.length}):',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: BrandColors.accent,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 80,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: referenceImages.length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (context, index) {
+                                  final imgUrl = referenceImages[index];
+                                  return GestureDetector(
+                                    onTap: () => _showImagePreviewDialog(
+                                      context,
+                                      imgUrl,
+                                      index + 1,
+                                      referenceImages.length,
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius:
+                                          BorderRadius.circular(10),
+                                      child: Container(
+                                        width: 80,
+                                        height: 80,
+                                        color: theme.dividerColor
+                                            .withValues(alpha: 0.2),
+                                        child: Image.network(
+                                          imgUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error,
+                                                  stackTrace) =>
+                                              const Center(
+                                            child: Icon(
+                                              Icons.broken_image_outlined,
+                                              size: 24,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ],

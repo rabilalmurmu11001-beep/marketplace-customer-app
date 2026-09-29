@@ -57,7 +57,7 @@ class NotificationService {
   NotificationService._internal();
   static final NotificationService instance = NotificationService._internal();
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  late final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -73,6 +73,15 @@ class NotificationService {
   String? get fcmToken => _fcmToken;
 
   bool _isInitialized = false;
+  bool isAppReady = false;
+  String? _pendingInitialRoute;
+
+  /// Consumes and returns any pending route queued while the app was starting from terminated state
+  String? consumePendingInitialRoute() {
+    final route = _pendingInitialRoute;
+    _pendingInitialRoute = null;
+    return route;
+  }
 
   /// Initializes permissions, notification channels, and listeners.
   Future<void> initialize() async {
@@ -154,10 +163,12 @@ class NotificationService {
           try {
             final Map<String, dynamic> data =
                 jsonDecode(response.payload!) as Map<String, dynamic>;
-            _handleNotificationRouting(data);
+            _handleNotificationRouting(data, isInitial: false);
           } catch (e) {
             debugPrint('Error parsing notification payload: $e');
           }
+        } else {
+          _handleNotificationRouting({}, isInitial: false);
         }
       },
     );
@@ -167,6 +178,23 @@ class NotificationService {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_channel);
+
+    // Check if app was launched from terminated state via local notification
+    try {
+      final launchDetails =
+          await _localNotifications.getNotificationAppLaunchDetails();
+      if (launchDetails != null && launchDetails.didNotificationLaunchApp) {
+        final payload = launchDetails.notificationResponse?.payload;
+        if (payload != null && payload.isNotEmpty) {
+          final Map<String, dynamic> data =
+              jsonDecode(payload) as Map<String, dynamic>;
+          debugPrint('Customer app launched via local notification tap: $data');
+          _handleNotificationRouting(data, isInitial: true);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking local notification launch details: $e');
+    }
   }
 
   /// Fetch FCM Device Token
@@ -368,13 +396,17 @@ class NotificationService {
 
       final notification = message.notification;
       final android = message.notification?.android;
+      final title = notification?.title ?? message.data['title'] ?? 'ProtoServe';
+      final body = notification?.body ??
+          message.data['body'] ??
+          message.data['message'];
 
       // When in foreground, show heads-up banner via flutter_local_notifications
-      if (notification != null && !kIsWeb) {
+      if ((notification != null || body != null) && !kIsWeb) {
         _localNotifications.show(
-          id: notification.hashCode,
-          title: notification.title,
-          body: notification.body,
+          id: message.messageId.hashCode,
+          title: title,
+          body: body ?? '',
           notificationDetails: NotificationDetails(
             android: AndroidNotificationDetails(
               _channel.id,
@@ -398,56 +430,174 @@ class NotificationService {
 
     // 2. App opened from BACKGROUND by user tapping notification
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint('App opened from notification in background state');
-      _handleNotificationRouting(message.data);
+      debugPrint('App opened from notification in background state: ${message.messageId}');
+      _handleNotificationRouting(message.data, isInitial: false);
     });
 
     // 3. App opened from TERMINATED state by user tapping notification
     _messaging.getInitialMessage().then((RemoteMessage? message) {
       if (message != null) {
-        debugPrint('App opened from notification in terminated state');
-        _handleNotificationRouting(message.data);
+        debugPrint('App opened from notification in terminated state: ${message.messageId}');
+        _handleNotificationRouting(message.data, isInitial: true);
       }
     });
   }
 
+  /// Determines the destination screen route based on notification data payload or notification type
+  static String resolveRoute(Map<String, dynamic>? data, {String? type}) {
+    if (data == null || data.isEmpty) {
+      if (type != null) {
+        return _routeForTypeCustomer(type);
+      }
+      return '/notifications';
+    }
+
+    final notifType = (data['type']?.toString() ?? type ?? '').toLowerCase();
+
+    // 1. Direct route parameter
+    if (data.containsKey('route') && data['route'] is String) {
+      final route = (data['route'] as String).trim();
+      if (route.isNotEmpty && route.startsWith('/')) {
+        return route;
+      }
+    }
+
+    // 2. Booking notification
+    final bookingId = data['booking_id'] ??
+        data['bookingId'] ??
+        data['id'] ??
+        data['bookingID'];
+    if (notifType == 'booking' ||
+        notifType == 'dispatch' ||
+        notifType == 'order' ||
+        (bookingId != null && notifType != 'chat')) {
+      if (bookingId != null && bookingId.toString().isNotEmpty) {
+        return '/booking-detail?booking_id=$bookingId';
+      }
+      return '/bookings';
+    }
+
+    // 3. Chat notification
+    final roomId = data['roomId'] ??
+        data['room_id'] ??
+        data['chatId'] ??
+        data['chat_id'];
+    if (notifType == 'chat' || notifType == 'message' || roomId != null) {
+      final recipientName = Uri.encodeComponent(
+        (data['recipientName'] ?? data['senderName'] ?? '').toString(),
+      );
+      final recipientId = Uri.encodeComponent(
+        (data['recipientId'] ?? data['senderId'] ?? '').toString(),
+      );
+      final recipientPhoto = Uri.encodeComponent(
+        (data['recipientPhoto'] ?? data['senderPhoto'] ?? '').toString(),
+      );
+      if (roomId != null && roomId.toString().isNotEmpty) {
+        return '/chat?roomId=$roomId&recipientName=$recipientName&recipientId=$recipientId&recipientPhoto=$recipientPhoto';
+      }
+      return '/home';
+    }
+
+    // 4. Call notification
+    if (notifType == 'call') {
+      if (bookingId != null && bookingId.toString().isNotEmpty) {
+        return '/booking-detail?booking_id=$bookingId';
+      }
+      return '/home';
+    }
+
+    final serviceId = data['service_id'] ?? data['serviceId'];
+
+    // 5. Review / Rating notification
+    if (notifType == 'review' || notifType == 'rating') {
+      if (serviceId != null && serviceId.toString().isNotEmpty) {
+        return '/reviews?service_id=$serviceId';
+      }
+      return '/bookings';
+    }
+
+    // 6. Service / Catalog notification
+    if (notifType == 'service' || serviceId != null) {
+      if (serviceId != null && serviceId.toString().isNotEmpty) {
+        return '/service-detail?service_id=$serviceId';
+      }
+      return '/search';
+    }
+
+    // 7. Category notification
+    final category = data['category'] ?? data['category_name'];
+    if (notifType == 'category') {
+      if (category != null && category.toString().isNotEmpty) {
+        return '/search?category=${Uri.encodeComponent(category.toString())}';
+      }
+      return '/categories';
+    }
+
+    // 8. Promo / Offer
+    if (notifType == 'promo' ||
+        notifType == 'offer' ||
+        notifType == 'discount') {
+      return '/home';
+    }
+
+    // 9. Address notification
+    if (notifType == 'address' || notifType == 'location') {
+      return '/addresses';
+    }
+
+    // 10. Profile notification
+    if (notifType == 'profile' || notifType == 'account') {
+      return '/profile';
+    }
+
+    // Fallback
+    return '/notifications';
+  }
+
+  static String _routeForTypeCustomer(String type) {
+    switch (type.toLowerCase()) {
+      case 'booking':
+      case 'dispatch':
+      case 'order':
+        return '/bookings';
+      case 'chat':
+      case 'message':
+        return '/home';
+      case 'service':
+        return '/search';
+      case 'category':
+        return '/categories';
+      case 'review':
+      case 'rating':
+        return '/bookings';
+      case 'promo':
+      case 'offer':
+        return '/home';
+      case 'address':
+      case 'location':
+        return '/addresses';
+      case 'profile':
+      case 'account':
+        return '/profile';
+      default:
+        return '/notifications';
+    }
+  }
+
   /// Route user based on notification data payload
-  void _handleNotificationRouting(Map<String, dynamic> data) {
-    if (data.isEmpty) {
-      // Default to notifications screen if tapped with no specific payload
-      Future.delayed(const Duration(milliseconds: 600), () {
-        appRouter.push('/notifications');
-      });
+  void _handleNotificationRouting(Map<String, dynamic> data, {bool isInitial = false}) {
+    final targetRoute = resolveRoute(data);
+    debugPrint('Customer Notification routing target: $targetRoute (isInitial: $isInitial, isAppReady: $isAppReady)');
+
+    if (isInitial && !isAppReady) {
+      _pendingInitialRoute = targetRoute;
       return;
     }
 
-    Future.delayed(const Duration(milliseconds: 600), () {
-      // 1. Check if direct route was provided
-      if (data.containsKey('route') && data['route'] is String) {
-        final route = data['route'] as String;
-        if (route.isNotEmpty) {
-          appRouter.push(route);
-          return;
-        }
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (targetRoute.isNotEmpty) {
+        appRouter.push(targetRoute);
       }
-
-      // 2. Booking notification
-      final bookingId = data['booking_id'] ?? data['bookingId'] ?? data['id'];
-      if (data['type'] == 'booking' && bookingId != null) {
-        appRouter.push('/booking-detail?booking_id=$bookingId');
-        return;
-      }
-
-      // 3. Chat notification
-      final roomId = data['roomId'] ?? data['room_id'];
-      if (data['type'] == 'chat' && roomId != null) {
-        final recipientName = data['recipientName'] ?? data['senderName'] ?? '';
-        appRouter.push('/chat?roomId=$roomId&recipientName=$recipientName');
-        return;
-      }
-
-      // 4. General fallback to notifications screen
-      appRouter.push('/notifications');
     });
   }
 }
