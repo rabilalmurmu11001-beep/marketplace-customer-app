@@ -353,6 +353,13 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
         ? rawReferenceImages.map((e) => e.toString()).toList()
         : <String>[];
 
+    final startOtp = (booking['startOtp'] ?? booking['start_otp'])?.toString();
+    final rawStartImages =
+        booking['startServiceImages'] ?? booking['start_service_images'];
+    final List<String> startServiceImages = (rawStartImages is List)
+        ? rawStartImages.map((e) => e.toString()).toList()
+        : <String>[];
+
     final house = address['house_number']?.toString();
     final street = address['street_no_or_name']?.toString();
     final city = address['city']?.toString() ?? '';
@@ -686,6 +693,79 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
                     ],
                   ),
                 ],
+                if (startServiceImages.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.camera_alt_outlined,
+                        size: 14,
+                        color: BrandColors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Pre-Service Inspection Photos (${startServiceImages.length}):',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: BrandColors.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 80,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: startServiceImages.length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (context, index) {
+                                  final imgUrl = startServiceImages[index];
+                                  return GestureDetector(
+                                    onTap: () => _showImagePreviewDialog(
+                                      context,
+                                      imgUrl,
+                                      index + 1,
+                                      startServiceImages.length,
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius:
+                                          BorderRadius.circular(10),
+                                      child: Container(
+                                        width: 80,
+                                        height: 80,
+                                        color: theme.dividerColor
+                                            .withValues(alpha: 0.2),
+                                        child: Image.network(
+                                          imgUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error,
+                                                  stackTrace) =>
+                                              const Center(
+                                            child: Icon(
+                                              Icons.broken_image_outlined,
+                                              size: 24,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -767,6 +847,85 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
               ),
             ),
             const SizedBox(height: 20),
+          ],
+          // Start Job OTP Verification Card
+          if (startOtp != null &&
+              startOtp.isNotEmpty &&
+              status.toLowerCase() == 'accepted') ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: BrandColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: BrandColors.primary.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: BrandColors.primary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.key_rounded,
+                          color: BrandColors.primary,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'START SERVICE VERIFICATION CODE',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: BrandColors.primary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'The technician has arrived at your location. Please share this 6-digit OTP code with the technician to verify and start your service:',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: BrandColors.primary.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        startOtp,
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 8,
+                          color: BrandColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
 
           // Technician assigned details card (Tap opens popup)
