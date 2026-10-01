@@ -188,8 +188,9 @@ class _FunnelStep2ScreenState extends ConsumerState<FunnelStep2Screen> {
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
             Expanded(
@@ -558,6 +559,7 @@ class _FunnelStep2ScreenState extends ConsumerState<FunnelStep2Screen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

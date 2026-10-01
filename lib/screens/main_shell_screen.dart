@@ -44,7 +44,6 @@ class MainShellScreen extends StatelessWidget {
     return Scaffold(
       body: child,
       bottomNavigationBar: Container(
-        height: 80,
         decoration: BoxDecoration(
           color: theme.cardColor,
           border: Border(
@@ -58,38 +57,44 @@ class MainShellScreen extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(
-              context: context,
-              index: 0,
-              selectedIndex: selectedIndex,
-              icon: Icons.home_outlined,
-              label: 'Home',
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(
+                  context: context,
+                  index: 0,
+                  selectedIndex: selectedIndex,
+                  icon: Icons.home_outlined,
+                  label: 'Home',
+                ),
+                _buildNavItem(
+                  context: context,
+                  index: 1,
+                  selectedIndex: selectedIndex,
+                  icon: Icons.search_outlined,
+                  label: 'Services',
+                ),
+                _buildNavItem(
+                  context: context,
+                  index: 2,
+                  selectedIndex: selectedIndex,
+                  icon: Icons.calendar_today_outlined,
+                  label: 'Bookings',
+                ),
+                _buildNavItem(
+                  context: context,
+                  index: 3,
+                  selectedIndex: selectedIndex,
+                  icon: Icons.person_outline,
+                  label: 'Account',
+                ),
+              ],
             ),
-            _buildNavItem(
-              context: context,
-              index: 1,
-              selectedIndex: selectedIndex,
-              icon: Icons.search_outlined,
-              label: 'Services',
-            ),
-            _buildNavItem(
-              context: context,
-              index: 2,
-              selectedIndex: selectedIndex,
-              icon: Icons.calendar_today_outlined,
-              label: 'Bookings',
-            ),
-            _buildNavItem(
-              context: context,
-              index: 3,
-              selectedIndex: selectedIndex,
-              icon: Icons.person_outline,
-              label: 'Account',
-            ),
-          ],
+          ),
         ),
       ),
     );
