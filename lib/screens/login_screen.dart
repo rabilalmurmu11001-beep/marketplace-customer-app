@@ -173,6 +173,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
       await ref.read(socketServiceProvider).connect(token);
       NotificationService.instance.syncTokenWithBackend();
+      NotificationService.instance.refreshUnreadCount();
 
       if (mounted) {
         setState(() {

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../network/services/notification_service.dart';
 import '../network/services/socketService.dart';
 import '../network/services/uploadService.dart';
 import '../network/services/userService.dart';
@@ -1717,6 +1718,61 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                         ),
                         Divider(height: 1, color: theme.dividerColor),
+                        // Notifications & Alerts
+                        ListTile(
+                          leading: const Icon(
+                            Icons.notifications_outlined,
+                            size: 18,
+                            color: BrandColors.accent,
+                          ),
+                          title: const Text(
+                            'Notifications & Alerts',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: const Text(
+                            'Booking updates, system alerts & announcements',
+                            style: TextStyle(fontSize: 10),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ValueListenableBuilder<int>(
+                                valueListenable: NotificationService.instance.unreadCountNotifier,
+                                builder: (context, count, _) {
+                                  if (count <= 0) return const SizedBox.shrink();
+                                  return Container(
+                                    margin: const EdgeInsets.only(right: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: BrandColors.danger,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '$count new',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const Icon(Icons.chevron_right, size: 16),
+                            ],
+                          ),
+                          onTap: () async {
+                            await context.push('/notifications');
+                            NotificationService.instance.refreshUnreadCount();
+                          },
+                        ),
+                        Divider(height: 1, color: theme.dividerColor),
                         // Delivery Coordinates
                         _buildProfileOption(
                           leadingIcon: Icons.location_on_outlined,
@@ -1754,6 +1810,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     child: ElevatedButton(
                       onPressed: () async {
                         await TokenRepository().deleteToken();
+                        await NotificationService.instance.deleteTokenFromBackend();
                         ref.read(socketServiceProvider).disconnect();
                         if (context.mounted) {
                           context.go('/login');

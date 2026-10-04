@@ -49,6 +49,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (token != null && token.isNotEmpty) {
         SocketService.instance.connect(token);
         NotificationService.instance.syncTokenWithBackend();
+        NotificationService.instance.refreshUnreadCount();
         NotificationService.instance.isAppReady = true;
 
         final pendingRoute =

@@ -8,6 +8,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../network/services/notification_service.dart';
 import '../theme/brand_theme.dart';
 import '../widgets/category_card.dart';
 import '../widgets/recommended_service_card.dart';
@@ -28,6 +29,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     // Fetch the active address and data when the HomeScreen is initialized
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      NotificationService.instance.refreshUnreadCount();
       final Map<String, dynamic>? customerProfile = ref.read(
         customerProfileProvider,
       );
@@ -39,6 +41,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _refreshData() async {
     try {
+      NotificationService.instance.refreshUnreadCount();
       final userProfile = await ref.read(userServiceProvider).getUserProfile();
       final userData = userProfile.data;
       if (userData is Map<String, dynamic>) {
@@ -205,19 +208,66 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ],
                     ),
                     GestureDetector(
-                      onTap: () => context.push('/notifications'),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: theme.cardColor,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: theme.dividerColor),
-                        ),
-                        child: Icon(
-                          Icons.notifications_none_outlined,
-                          size: 18,
-                          color: theme.textTheme.bodyMedium?.color,
-                        ),
+                      onTap: () async {
+                        await context.push('/notifications');
+                        NotificationService.instance.refreshUnreadCount();
+                      },
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: theme.cardColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: theme.dividerColor),
+                            ),
+                            child: Icon(
+                              Icons.notifications_none_outlined,
+                              size: 18,
+                              color: theme.textTheme.bodyMedium?.color,
+                            ),
+                          ),
+                          ValueListenableBuilder<int>(
+                            valueListenable:
+                                NotificationService.instance.unreadCountNotifier,
+                            builder: (context, count, _) {
+                              if (count <= 0) return const SizedBox.shrink();
+                              return Positioned(
+                                top: -2,
+                                right: -2,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: BrandColors.danger,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: theme.cardColor,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    count > 9 ? '9+' : '$count',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.bold,
+                                      height: 1,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ],

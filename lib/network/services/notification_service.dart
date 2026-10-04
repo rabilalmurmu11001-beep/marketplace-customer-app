@@ -72,9 +72,35 @@ class NotificationService {
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
 
+  /// Real-time notifier for total unread notifications count
+  final ValueNotifier<int> unreadCountNotifier = ValueNotifier<int>(0);
+
   bool _isInitialized = false;
   bool isAppReady = false;
   String? _pendingInitialRoute;
+
+  /// Helper to create an authenticated Dio instance with certificate overrides
+  Dio _createAuthDio(String jwtToken) {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: '$host/api/v1',
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $jwtToken',
+        },
+      ),
+    );
+    dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final client = HttpClient();
+        client.badCertificateCallback = (cert, host, port) => true;
+        return client;
+      },
+    );
+    return dio;
+  }
 
   /// Consumes and returns any pending route queued while the app was starting from terminated state
   String? consumePendingInitialRoute() {
@@ -226,25 +252,7 @@ class NotificationService {
       final token = _fcmToken ?? await _messaging.getToken();
       if (token == null || token.isEmpty) return;
 
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: '$host/api/v1',
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $jwtToken',
-          },
-        ),
-      );
-      dio.httpClientAdapter = IOHttpClientAdapter(
-        createHttpClient: () {
-          final client = HttpClient();
-          client.badCertificateCallback = (cert, host, port) => true;
-          return client;
-        },
-      );
-
+      final dio = _createAuthDio(jwtToken);
       final response = await dio.post('/users/fcm-token', data: {'fcmToken': token});
       debugPrint('Customer FCM Token successfully synced with backend: ${response.statusCode}');
     } catch (e) {
@@ -258,26 +266,9 @@ class NotificationService {
       final jwtToken = await TokenRepository().readToken();
       if (jwtToken == null || jwtToken.isEmpty) return;
 
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: '$host/api/v1',
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $jwtToken',
-          },
-        ),
-      );
-      dio.httpClientAdapter = IOHttpClientAdapter(
-        createHttpClient: () {
-          final client = HttpClient();
-          client.badCertificateCallback = (cert, host, port) => true;
-          return client;
-        },
-      );
-
+      final dio = _createAuthDio(jwtToken);
       await dio.delete('/users/fcm-token');
+      unreadCountNotifier.value = 0;
       debugPrint('Customer FCM Token successfully cleared from backend');
     } catch (e) {
       debugPrint('Failed to clear Customer FCM Token from backend: $e');
@@ -285,28 +276,12 @@ class NotificationService {
   }
 
   /// Fetch in-app notification history from backend
-  Future<List<Map<String, dynamic>>> getUserNotifications({int page = 1, int limit = 20}) async {
+  Future<List<Map<String, dynamic>>> getUserNotifications({int page = 1, int limit = 50}) async {
     try {
       final jwtToken = await TokenRepository().readToken();
       if (jwtToken == null || jwtToken.isEmpty) return [];
 
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: '$host/api/v1',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $jwtToken',
-          },
-        ),
-      );
-      dio.httpClientAdapter = IOHttpClientAdapter(
-        createHttpClient: () {
-          final client = HttpClient();
-          client.badCertificateCallback = (cert, host, port) => true;
-          return client;
-        },
-      );
-
+      final dio = _createAuthDio(jwtToken);
       final response = await dio.get(
         '/notifications',
         queryParameters: {'page': page, 'limit': limit},
@@ -314,7 +289,12 @@ class NotificationService {
 
       if (response.statusCode == 200 && response.data != null) {
         final List list = response.data['notifications'] ?? [];
-        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        final items = list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+
+        // Update unread count notifier
+        final unread = items.where((i) => i['isRead'] != true).length;
+        unreadCountNotifier.value = unread;
+        return items;
       }
       return [];
     } catch (e) {
@@ -329,25 +309,15 @@ class NotificationService {
       final jwtToken = await TokenRepository().readToken();
       if (jwtToken == null || jwtToken.isEmpty) return false;
 
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: '$host/api/v1',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $jwtToken',
-          },
-        ),
-      );
-      dio.httpClientAdapter = IOHttpClientAdapter(
-        createHttpClient: () {
-          final client = HttpClient();
-          client.badCertificateCallback = (cert, host, port) => true;
-          return client;
-        },
-      );
-
+      final dio = _createAuthDio(jwtToken);
       final response = await dio.patch('/notifications/$notificationId/read');
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        if (unreadCountNotifier.value > 0) {
+          unreadCountNotifier.value--;
+        }
+        return true;
+      }
+      return false;
     } catch (e) {
       debugPrint('Error marking notification read: $e');
       return false;
@@ -360,29 +330,23 @@ class NotificationService {
       final jwtToken = await TokenRepository().readToken();
       if (jwtToken == null || jwtToken.isEmpty) return false;
 
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: '$host/api/v1',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $jwtToken',
-          },
-        ),
-      );
-      dio.httpClientAdapter = IOHttpClientAdapter(
-        createHttpClient: () {
-          final client = HttpClient();
-          client.badCertificateCallback = (cert, host, port) => true;
-          return client;
-        },
-      );
-
+      final dio = _createAuthDio(jwtToken);
       final response = await dio.patch('/notifications/read-all');
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        unreadCountNotifier.value = 0;
+        return true;
+      }
+      return false;
     } catch (e) {
       debugPrint('Error marking all notifications read: $e');
       return false;
     }
+  }
+
+  /// Refresh unread notifications count from backend
+  Future<int> refreshUnreadCount() async {
+    final list = await getUserNotifications(page: 1, limit: 50);
+    return list.where((i) => i['isRead'] != true).length;
   }
 
   /// Setup listeners for foreground messages and notification clicks
@@ -390,6 +354,7 @@ class NotificationService {
     // 1. App is in the FOREGROUND
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('Foreground FCM message received: ${message.messageId}');
+      unreadCountNotifier.value++;
       debugPrint('Notification Title: ${message.notification?.title}');
       debugPrint('Notification Body: ${message.notification?.body}');
       debugPrint('Data: ${message.data}');

@@ -192,6 +192,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         if (token != null) {
           await ref.read(socketServiceProvider).connect(token);
           NotificationService.instance.syncTokenWithBackend();
+          NotificationService.instance.refreshUnreadCount();
         }
 
         if (data['user'] is Map<String, dynamic>) {

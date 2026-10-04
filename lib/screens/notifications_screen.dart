@@ -156,12 +156,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Notifications',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Notifications',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            ValueListenableBuilder<int>(
+              valueListenable: NotificationService.instance.unreadCountNotifier,
+              builder: (context, unreadCount, _) {
+                return Text(
+                  unreadCount > 0
+                      ? '$unreadCount unread ${unreadCount == 1 ? 'alert' : 'alerts'}'
+                      : 'All alerts caught up',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: unreadCount > 0
+                        ? BrandColors.accent
+                        : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
@@ -171,18 +193,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           onPressed: () => context.pop(),
         ),
         actions: [
-          if (_notifications.any((n) => !n.isRead))
-            TextButton(
-              onPressed: _markAllAsRead,
-              child: const Text(
-                'Mark read',
-                style: TextStyle(
-                  color: BrandColors.accent,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+          ValueListenableBuilder<int>(
+            valueListenable: NotificationService.instance.unreadCountNotifier,
+            builder: (context, unreadCount, _) {
+              if (unreadCount == 0 && !_notifications.any((n) => !n.isRead)) {
+                return const SizedBox.shrink();
+              }
+              return TextButton(
+                onPressed: _markAllAsRead,
+                child: const Text(
+                  'Mark read',
+                  style: TextStyle(
+                    color: BrandColors.accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
+          ),
         ],
       ),
       body: SafeArea(
