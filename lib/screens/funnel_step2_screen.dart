@@ -144,6 +144,10 @@ class _FunnelStep2ScreenState extends ConsumerState<FunnelStep2Screen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final servicePrice = _asString(
+      widget.bookingSummery?['service']?['basePrice'],
+      '0.00',
+    );
     final customerAddresses = ref.watch(customerAddressProvider) ?? [];
     final targetAddressId = widget.bookingSummery?['addressId']?.toString();
 
@@ -416,20 +420,8 @@ class _FunnelStep2ScreenState extends ConsumerState<FunnelStep2Screen> {
                       child: Column(
                         children: [
                           _buildSummaryRow(
-                            'Base Rate Quote:',
-                            '₹ ${widget.bookingSummery?['service']?['basePrice']}',
-                            theme,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildSummaryRow(
-                            'Sanitization Materials Fee:',
-                            '₹ 5.00',
-                            theme,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildSummaryRow(
-                            'Ecosystem Regulatory Taxes:',
-                            '₹ 2.40',
+                            'Service Price:',
+                            '₹ $servicePrice',
                             theme,
                           ),
                           const SizedBox(height: 12),
@@ -439,14 +431,14 @@ class _FunnelStep2ScreenState extends ConsumerState<FunnelStep2Screen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Total Price Aggregation:',
+                                'Total Price:',
                                 style: theme.textTheme.bodyLarge?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
                                 ),
                               ),
-                              const Text(
-                                '₹ 56.40',
+                              Text(
+                                '₹ $servicePrice',
                                 style: TextStyle(
                                   color: BrandColors.accent,
                                   fontWeight: FontWeight.w800,

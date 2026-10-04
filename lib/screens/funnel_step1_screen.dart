@@ -47,123 +47,43 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
     }
   }
 
-  Future<void> _showImageSourcePicker() async {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Theme.of(context).cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (bottomSheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Add Reference Photo',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Choose how you would like to select photos.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: BrandColors.accent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.camera_alt_outlined, color: BrandColors.accent),
-                  ),
-                  title: const Text('Take Photo', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  subtitle: const Text('Use your device camera', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(bottomSheetContext);
-                    _pickImages(ImageSource.camera);
-                  },
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: BrandColors.accent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.photo_library_outlined, color: BrandColors.accent),
-                  ),
-                  title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  subtitle: const Text('Select one or more photos from gallery', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(bottomSheetContext);
-                    _pickImages(ImageSource.gallery);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _pickImages(ImageSource source) async {
+  Future<void> _takePhoto() async {
     final picker = ImagePicker();
     final messenger = ScaffoldMessenger.of(context);
     try {
-      List<XFile> pickedFiles = [];
-      if (source == ImageSource.camera) {
-        final photo = await picker.pickImage(
-          source: ImageSource.camera,
-          maxWidth: 1600,
-          maxHeight: 1600,
-          imageQuality: 85,
-        );
-        if (photo != null) {
-          pickedFiles.add(photo);
-        }
-      } else {
-        pickedFiles = await picker.pickMultiImage(
-          maxWidth: 1600,
-          maxHeight: 1600,
-          imageQuality: 85,
-        );
-      }
+      final photo = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
 
-      if (pickedFiles.isEmpty) return;
+      if (photo == null) return;
 
       setState(() {
         _isUploadingImage = true;
       });
 
       final uploadService = ref.read(uploadServiceProvider);
-      int successCount = 0;
-
-      for (final file in pickedFiles) {
-        try {
-          final result = await uploadService.uploadFile(
-            file: file,
-            folder: 'bookings',
-          );
-          if (result.url.isNotEmpty) {
+      try {
+        final result = await uploadService.uploadFile(
+          file: photo,
+          folder: 'bookings',
+        );
+        if (result.url.isNotEmpty) {
+          setState(() {
             _referenceImages.add(result.url);
-            successCount++;
-          }
-        } catch (e) {
-          debugPrint('Failed to upload image: $e');
+          });
+        }
+      } catch (e) {
+        debugPrint('Failed to upload image: $e');
+        if (mounted) {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Failed to upload photo. Please try again.'),
+              backgroundColor: Colors.orangeAccent,
+            ),
+          );
         }
       }
 
@@ -171,17 +91,6 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
         setState(() {
           _isUploadingImage = false;
         });
-
-        if (successCount < pickedFiles.length) {
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(
-                'Uploaded $successCount of ${pickedFiles.length} photos. Some failed to upload.',
-              ),
-              backgroundColor: Colors.orangeAccent,
-            ),
-          );
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -190,7 +99,7 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
         });
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Failed to select images: $e'),
+            content: Text('Failed to capture photo: $e'),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -646,7 +555,7 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Upload photos of the problem or space to help your service provider prepare.',
+                        'Take photos of the problem or space to help your service provider prepare.',
                         style: TextStyle(
                           fontSize: 11,
                           color: theme.textTheme.bodyMedium?.color
@@ -660,11 +569,11 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
                         child: ListView(
                           scrollDirection: Axis.horizontal,
                           children: [
-                            // Add button
+                            // Take photo button
                             InkWell(
                               onTap: _isUploadingImage
                                   ? null
-                                  : _showImageSourcePicker,
+                                  : _takePhoto,
                               borderRadius: BorderRadius.circular(14),
                               child: Container(
                                 width: 90,
@@ -689,14 +598,14 @@ class _FunnelStep1ScreenState extends ConsumerState<FunnelStep1Screen> {
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
-                                        Icons.add_a_photo_outlined,
+                                        Icons.camera_alt_outlined,
                                         size: 20,
                                         color: BrandColors.accent,
                                       ),
                                     ),
                                     const SizedBox(height: 6),
                                     const Text(
-                                      '+ Add Photo',
+                                      'Take Photo',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,

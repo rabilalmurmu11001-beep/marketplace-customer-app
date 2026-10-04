@@ -16,9 +16,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController = TextEditingController(text: 'emma.watson@gmail.com');
-  final _passwordController = TextEditingController(text: 'password123');
-  final _phoneController = TextEditingController(text: '+1 (555) 234-5678');
+  final _emailController = TextEditingController(text: '');
+  final _passwordController = TextEditingController(text: '');
+  final _phoneController = TextEditingController(text: '');
   final _otpController = TextEditingController();
 
   bool _isEmail = true;

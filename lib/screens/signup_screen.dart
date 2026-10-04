@@ -13,10 +13,10 @@ class SignupScreen extends ConsumerStatefulWidget {
 }
 
 class _SignupScreenState extends ConsumerState<SignupScreen> {
-  final _nameController = TextEditingController(text: 'Emma Watson');
-  final _emailController = TextEditingController(text: 'emma@gmail.com');
+  final _nameController = TextEditingController(text: '');
+  final _emailController = TextEditingController(text: '');
   final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController(text: 'password123');
+  final _passwordController = TextEditingController(text: '');
 
   bool _isLoading = false;
   bool _obscurePassword = true;
